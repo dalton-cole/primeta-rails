@@ -57,28 +57,7 @@
   <section class="auth-section">
     <div class="container">
       <% if user_signed_in? %>
-        <div class="user-dashboard">
-          <h2>Welcome, <%= current_user.name || current_user.email %></h2>
-          <div class="stats-cards">
-            <div class="stat-card">
-              <h3>0</h3>
-              <p>Repositories Explored</p>
-            </div>
-            <div class="stat-card">
-              <h3>0</h3>
-              <p>Files Viewed</p>
-            </div>
-            <div class="stat-card">
-              <h3>0</h3>
-              <p>Exercises Completed</p>
-            </div>
-          </div>
-          
-          <div class="user-actions">
-            <%= link_to "Continue Learning", repositories_path, class: "btn btn-primary" %>
-            <%= button_to "Sign Out", destroy_user_session_path, method: :delete, class: "btn btn-outline" %>
-          </div>
-        </div>
+        <!-- User dashboard removed -->
       <% else %>
         <div class="auth-card">
           <h2>Start Your Learning Journey</h2>
