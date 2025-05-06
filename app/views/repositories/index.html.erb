@@ -1,0 +1,88 @@
+<div class="container">
+  <div class="header">
+    <h1>Code Repositories</h1>
+    <% if current_user.admin? %>
+      <%= link_to "Add Repository", new_repository_path, class: "btn btn-primary" %>
+    <% end %>
+  </div>
+
+  <div class="repositories-list">
+    <% if @repositories.any? %>
+      <div class="repo-grid">
+        <% @repositories.each do |repository| %>
+          <div class="repo-card">
+            <h3><%= repository.name %></h3>
+            <p class="description"><%= repository.description.present? ? truncate(repository.description, length: 100) : "No description provided" %></p>
+            <p class="meta">
+              <span class="status"><%= repository.status.capitalize %></span>
+              <span class="files"><%= repository.file_count %> files</span>
+            </p>
+            <%= link_to "Explore", repository_path(repository), class: "btn btn-outline" %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="empty-state">
+        <p>No repositories available yet.</p>
+        <% if current_user.admin? %>
+          <p>Get started by adding a repository.</p>
+          <%= link_to "Add Repository", new_repository_path, class: "btn btn-primary" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .repo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .repo-card {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .repo-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  }
+  
+  .repo-card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+  }
+  
+  .description {
+    color: #666;
+    margin-bottom: 1rem;
+    min-height: 3rem;
+  }
+  
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #777;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    background-color: white;
+    border-radius: var(--border-radius);
+  }
+</style>

@@ -1,0 +1,114 @@
+<div class="container">
+  <div class="header">
+    <h1>Add New Repository</h1>
+    <div class="breadcrumbs">
+      <%= link_to "Repositories", repositories_path %> / Add New
+    </div>
+  </div>
+
+  <div class="form-container">
+    <%= form_with(model: @repository, class: "repository-form") do |form| %>
+      <% if @repository.errors.any? %>
+        <div class="error-messages">
+          <h2><%= pluralize(@repository.errors.count, "error") %> prevented this repository from being saved:</h2>
+          <ul>
+            <% @repository.errors.each do |error| %>
+              <li><%= error.full_message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="form-group">
+        <%= form.label :name, "Repository Name" %>
+        <%= form.text_field :name, required: true, placeholder: "My Awesome Project" %>
+        <small>A human-readable name for this repository.</small>
+      </div>
+
+      <div class="form-group">
+        <%= form.label :git_url, "Git URL" %>
+        <%= form.text_field :git_url, required: true, placeholder: "https://github.com/username/repo.git" %>
+        <small>The Git clone URL. This should be a valid Git repository URL.</small>
+      </div>
+
+      <div class="form-group">
+        <%= form.label :description, "Description" %>
+        <%= form.text_area :description, rows: 3, placeholder: "A brief description of this repository..." %>
+        <small>Optional. Describe what this repository contains.</small>
+      </div>
+
+      <div class="form-group">
+        <%= form.label :default_branch, "Default Branch" %>
+        <%= form.text_field :default_branch, placeholder: "main" %>
+        <small>Optional. Defaults to 'main' if not specified.</small>
+      </div>
+
+      <div class="form-actions">
+        <%= form.submit "Add Repository", class: "btn btn-primary" %>
+        <%= link_to "Cancel", repositories_path, class: "btn btn-outline" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .form-container {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+  }
+  
+  .repository-form {
+    margin-top: 1rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+  }
+  
+  .form-group input[type="text"],
+  .form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+  }
+  
+  .form-group small {
+    display: block;
+    margin-top: 0.25rem;
+    color: #666;
+    font-size: 0.875rem;
+  }
+  
+  .form-actions {
+    margin-top: 2rem;
+  }
+  
+  .error-messages {
+    background-color: #fce4e4;
+    border: 1px solid #f8b6b6;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+  }
+  
+  .error-messages h2 {
+    font-size: 1.1rem;
+    color: #e74c3c;
+    margin-top: 0;
+  }
+  
+  .error-messages ul {
+    margin-bottom: 0;
+  }
+</style>

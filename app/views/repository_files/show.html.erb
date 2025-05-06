@@ -1,0 +1,78 @@
+<div class="container">
+  <div class="header">
+    <div class="breadcrumbs">
+      <%= link_to "Repositories", repositories_path %> / 
+      <%= link_to @repository.name, repository_path(@repository) %> /
+      <%= @repository_file.path %>
+    </div>
+    <div class="file-meta">
+      <span class="language"><%= @repository_file.language.capitalize %></span>
+      <span class="size"><%= number_to_human_size(@repository_file.size || 0) %></span>
+    </div>
+  </div>
+  
+  <div class="code-container">
+    <div id="monaco-editor" data-controller="monaco" 
+         data-monaco-language-value="<%= @language %>"
+         data-monaco-content-value="<%= j @content %>"
+         data-monaco-read-only-value="true">
+    </div>
+  </div>
+  
+  <div class="file-stats">
+    <div class="view-info">
+      <h3>Your Progress</h3>
+      <p>You've viewed this file <%= @file_view.view_count %> times.</p>
+      <p>Time spent: <%= @file_view.formatted_time_spent %></p>
+      <p>Last viewed: <%= @file_view.last_viewed_at&.strftime("%B %d, %Y at %H:%M") || "Just now" %></p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .container {
+    max-width: 1400px;
+  }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  
+  .breadcrumbs {
+    color: #666;
+    font-size: 0.9rem;
+  }
+  
+  .file-meta {
+    color: #666;
+    font-size: 0.9rem;
+  }
+  
+  .file-meta span {
+    margin-left: 1rem;
+  }
+  
+  .code-container {
+    background-color: #1e1e1e;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+  }
+  
+  #monaco-editor {
+    width: 100%;
+    height: 70vh;
+    min-height: 400px;
+  }
+  
+  .file-stats {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+</style>

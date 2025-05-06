@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Primeta.ai" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description" content="The Fastest Way to Learn From Real-World Codebases">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
+    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%# Includes all stylesheet files in app/assets/stylesheets %>
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body>
+    <header class="main-header">
+      <div class="container">
+        <div class="logo">
+          <%= link_to root_path do %>
+            <h1>Primeta.ai</h1>
+          <% end %>
+        </div>
+        
+        <nav class="main-nav">
+          <% if user_signed_in? %>
+            <%= link_to "Repositories", repositories_path, class: "nav-link" %>
+            <%= link_to "My Progress", "#", class: "nav-link" %>
+            <div class="user-menu">
+              <span class="user-name"><%= current_user.name || current_user.email %></span>
+              <div class="dropdown-menu">
+                <%= link_to "Profile", "#" %>
+                <%= link_to "Settings", "#" %>
+                <%= button_to "Sign Out", destroy_user_session_path, method: :delete %>
+              </div>
+            </div>
+          <% else %>
+            <%= link_to "Sign In", new_user_session_path, class: "nav-link" %>
+            <%= link_to "Sign Up", new_user_registration_path, class: "nav-link" %>
+          <% end %>
+        </nav>
+      </div>
+    </header>
+    
+    <div class="flash-messages">
+      <% if notice %>
+        <div class="notice"><%= notice %></div>
+      <% end %>
+      <% if alert %>
+        <div class="alert"><%= alert %></div>
+      <% end %>
+    </div>
+    
+    <main>
+      <%= yield %>
+    </main>
+  </body>
+</html>
