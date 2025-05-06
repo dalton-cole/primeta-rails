@@ -7,6 +7,10 @@ Rails.application.routes.draw do
   # Home controller route
   get "home/index"
   
+  # Profile routes
+  resources :profiles, only: [:show]
+  get "my_profile", to: "profiles#show", as: :my_profile
+  
   # Repository routes
   resources :repositories, only: [:index, :show, :new, :create] do
     resources :repository_files, only: [:index], controller: 'repositories/repository_files'

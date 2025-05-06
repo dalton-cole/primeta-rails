@@ -1,0 +1,261 @@
+<div class="profile-container container mt-4">
+  <div class="row">
+    <!-- Left column for profile info and activity summary -->
+    <div class="col-md-4">
+      <!-- Profile card -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="text-center mb-3">
+            <% if @user.github_username.present? %>
+              <img src="https://github.com/<%= @user.github_username %>.png" alt="<%= @user.name %>" class="rounded-circle profile-image mb-2" style="width: 120px; height: 120px;">
+            <% else %>
+              <div class="profile-placeholder rounded-circle mb-2 d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; background-color: var(--primary-color); color: white; font-size: 48px; margin: 0 auto;">
+                <%= @user.name&.first&.upcase || @user.email.first.upcase %>
+              </div>
+            <% end %>
+            <h3 class="profile-name"><%= @user.name.presence || @user.email %></h3>
+            <% if @user.github_username.present? %>
+              <p class="text-muted">
+                <a href="https://github.com/<%= @user.github_username %>" target="_blank" rel="noopener" class="github-link">
+                  <i class="bi bi-github"></i> @<%= @user.github_username %>
+                </a>
+              </p>
+            <% end %>
+          </div>
+          
+          <% if current_user == @user %>
+            <div class="d-grid">
+              <%= link_to edit_user_registration_path, class: "btn btn-outline-primary btn-block" do %>
+                <i class="bi bi-pencil-square"></i> Edit Profile
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Activity summary card -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-lightning-charge"></i> Activity Summary</h5>
+        </div>
+        <div class="card-body">
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-folder2-open"></i> Repositories Explored</span>
+              <span class="badge bg-primary rounded-pill"><%= @repositories.count %></span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-file-earmark-code"></i> Files Viewed</span>
+              <span class="badge bg-primary rounded-pill"><%= @user.file_views.select(:repository_file_id).distinct.count %></span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-eye"></i> Total View Count</span>
+              <span class="badge bg-primary rounded-pill"><%= @user.file_views.sum(:view_count) %></span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-clock-history"></i> Total Time Spent</span>
+              <span class="badge bg-primary rounded-pill">
+                <%= 
+                  total_seconds = @user.file_views.sum(:total_time_spent).to_i
+                  
+                  if total_seconds > 3600
+                    hours = total_seconds / 3600
+                    minutes = (total_seconds % 3600) / 60
+                    "#{hours}h #{minutes}m"
+                  elsif total_seconds > 60
+                    minutes = total_seconds / 60
+                    seconds = total_seconds % 60
+                    "#{minutes}m #{seconds}s"
+                  else
+                    "#{total_seconds}s"
+                  end
+                %>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column for repository progress -->
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-graph-up"></i> Repository Progress</h5>
+        </div>
+        <div class="card-body">
+          <% if @repositories.empty? %>
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> No repositories viewed yet.
+              <%= link_to repositories_path, class: "alert-link" do %>
+                Explore Repositories
+              <% end %>
+            </div>
+          <% else %>
+            <div class="list-group repository-list">
+              <% @repositories.each do |repo| %>
+                <% stats = @repository_stats[repo.id] %>
+                <div class="list-group-item list-group-item-action p-3">
+                  <div class="d-flex w-100 justify-content-between mb-2">
+                    <h5 class="mb-1">
+                      <%= link_to repo.name, repository_path(repo), class: "repo-link" %>
+                    </h5>
+                    <small class="text-muted">
+                      <i class="bi bi-clock"></i> Last viewed 
+                      <% last_viewed = repo.repository_files.joins(:file_views).where(file_views: { user_id: @user.id }).maximum('file_views.last_viewed_at') %>
+                      <%= last_viewed ? time_ago_in_words(last_viewed) + " ago" : "never" %>
+                    </small>
+                  </div>
+                  
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <p class="mb-1">Overall Progress:</p>
+                      <div class="progress" style="height: 18px;">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: <%= stats[:file_completion] %>%;" 
+                             aria-valuenow="<%= stats[:file_completion] %>" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                          <%= stats[:file_completion] %>%
+                        </div>
+                      </div>
+                      <small class="text-muted">
+                        <%= stats[:viewed_files] %> / <%= stats[:total_files] %> files viewed
+                      </small>
+                    </div>
+                    
+                    <div class="col-md-6">
+                      <p class="mb-1">Key Files Progress:</p>
+                      <div class="progress" style="height: 18px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: <%= stats[:key_file_completion] %>%;" 
+                             aria-valuenow="<%= stats[:key_file_completion] %>" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                          <%= stats[:key_file_completion] %>%
+                        </div>
+                      </div>
+                      <small class="text-muted">
+                        <%= stats[:viewed_key_files] %> / <%= stats[:total_key_files] %> key files viewed
+                      </small>
+                    </div>
+                  </div>
+                  
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <span class="badge bg-info me-2">
+                        <i class="bi bi-clock"></i> 
+                        <%= 
+                          seconds = stats[:total_time_spent].to_i
+                          if seconds > 3600
+                            hours = seconds / 3600
+                            minutes = (seconds % 3600) / 60
+                            "#{hours}h #{minutes}m"
+                          elsif seconds > 60
+                            minutes = seconds / 60
+                            secs = seconds % 60
+                            "#{minutes}m #{secs}s"
+                          else
+                            "#{seconds}s"
+                          end
+                        %>
+                      </span>
+                      <span class="badge bg-secondary me-2">
+                        <i class="bi bi-eye"></i> 
+                        <%= repo.repository_files.joins(:file_views).where(file_views: { user_id: @user.id }).sum('file_views.view_count') %> views
+                      </span>
+                    </div>
+                    <%= link_to repository_path(repo), class: "btn btn-sm btn-primary" do %>
+                      <i class="bi bi-arrow-right-circle"></i> Continue Exploring
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .profile-container {
+    max-width: 1200px;
+  }
+  
+  .repository-list .list-group-item {
+    transition: all 0.2s;
+    border-left: 4px solid transparent;
+  }
+  
+  .repository-list .list-group-item:hover {
+    border-left-color: var(--primary-color);
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .repo-link {
+    color: var(--primary-color);
+    text-decoration: none;
+  }
+  
+  .repo-link:hover {
+    color: rgba(52, 152, 219, 0.8);
+    text-decoration: underline;
+  }
+  
+  .progress {
+    background-color: rgba(0, 0, 0, 0.25);
+  }
+  
+  .progress-bar {
+    font-weight: 600;
+    font-size: 0.8rem;
+  }
+  
+  .card {
+    border: none;
+    background-color: var(--dark-bg-color);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .list-group-item {
+    background-color: transparent;
+    color: var(--text-light-color);
+  }
+  
+  /* Fix for nested rows */
+  .row .row {
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  /* Fix for responsive columns */
+  @media (max-width: 767px) {
+    .repository-list .list-group-item-action .row .col-md-6 {
+      margin-bottom: 1rem;
+    }
+    
+    .repository-list .list-group-item-action .col-md-6:last-child {
+      margin-bottom: 0;
+    }
+  }
+  
+  .profile-name {
+    color: var(--text-light-color);
+  }
+  
+  .github-link {
+    color: var(--primary-color);
+    text-decoration: none;
+  }
+  
+  .github-link:hover {
+    color: rgba(52, 152, 219, 0.8);
+    text-decoration: underline;
+  }
+  
+  .text-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+</style> 
