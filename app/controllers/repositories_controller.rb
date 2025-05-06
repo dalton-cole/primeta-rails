@@ -1,5 +1,5 @@
 class RepositoriesController < ApplicationController
-  before_action :authenticate_user!
+  before_action :authenticate_user!, except: [:index]
   before_action :set_repository, only: [:show, :track_time, :sync, :progress]
   before_action :require_admin, only: [:new, :create, :sync]
 

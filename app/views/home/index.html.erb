@@ -1,125 +1,448 @@
-<div class="container">
-  <div class="hero-section">
-    <h1>The Fastest Way to Learn From Real-World Codebases</h1>
-    <p class="tagline">Track your progress. Challenge yourself. Master production codebases.</p>
-  </div>
-  
-  <div class="auth-section">
-    <% if user_signed_in? %>
-      <div class="user-info">
-        <h3>Welcome, <%= current_user.name || current_user.email %></h3>
-        <p>
-          <% if current_user.github_username %>
-            Connected to GitHub: <%= current_user.github_username %>
+<div class="landing-container">
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <h1>Master Real-World Codebases</h1>
+        <p class="hero-tagline">Navigate, understand and learn from production code with an AI guide</p>
+        <div class="hero-cta">
+          <% if user_signed_in? %>
+            <%= link_to "Explore Repositories", repositories_path, class: "btn btn-primary btn-lg" %>
+          <% else %>
+            <%= button_to "Sign in with GitHub", user_github_omniauth_authorize_path, data: { turbo: false }, class: "btn btn-primary btn-lg" %>
+            <%= link_to "Explore Codebases", repositories_path, class: "btn btn-outline btn-lg" %>
           <% end %>
-        </p>
-        
-        <div class="user-actions">
-          <%= link_to "Explore Repositories", repositories_path, class: "btn btn-primary" %>
-          <%= button_to "Sign Out", destroy_user_session_path, method: :delete, class: "btn btn-outline" %>
         </div>
       </div>
-    <% else %>
-      <div class="auth-actions">
-        <h3>Get Started</h3>
-        <p>Sign in with your GitHub account to start exploring real code.</p>
-        
-        <%= button_to "Sign in with GitHub", user_github_omniauth_authorize_path, data: { turbo: false }, class: "btn btn-primary" %>
-        
-        <div class="divider">or</div>
-        
-        <%= link_to "Sign Up with Email", new_user_registration_path, class: "btn btn-outline" %>
-        <%= link_to "Sign In with Email", new_user_session_path, class: "btn btn-outline" %>
-      </div>
-    <% end %>
-  </div>
+      <div class="hero-image">
+        <div class="code-browser-mockup">
+          <div class="browser-header">
+            <div class="browser-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="browser-address">primeta.ai/repositories/rails/app/controllers</div>
+          </div>
+          <div class="browser-content">
+            <div class="file-tree">
+              <div class="folder">app/</div>
+              <div class="folder active">controllers/</div>
+              <div class="file">application_controller.rb</div>
+              <div class="file active">users_controller.rb</div>
+              <div class="file">posts_controller.rb</div>
+            </div>
+            <div class="code-view">
+              <pre><code>class UsersController < ApplicationController
+  before_action :authenticate_user!
   
-  <div class="features">
-    <h2>Learn by reading real code</h2>
-    <div class="feature-grid">
-      <div class="feature-item">
-        <h3>Explore Real Codebases</h3>
-        <p>Navigate production repositories with syntax highlighting and intuitive file browsing.</p>
-      </div>
-      <div class="feature-item">
-        <h3>Track Your Progress</h3>
-        <p>See which files you've studied and how much time you've spent mastering each component.</p>
-      </div>
-      <div class="feature-item">
-        <h3>Challenge Yourself</h3>
-        <p>Demonstrate your understanding through interactive quizzes on code structure and function.</p>
-      </div>
-      <div class="feature-item">
-        <h3>Build Your Portfolio</h3>
-        <p>Showcase your code comprehension skills with shareable achievements and progress reports.</p>
+  def show
+    @user = User.find(params[:id])
+    @repositories = @user.repositories
+    
+    respond_to do |format|
+      format.html
+      format.json { render json: @user }
+    end
+  end
+  
+  # More controller code...
+</code></pre>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
+  
+  <!-- Auth Section -->
+  <section class="auth-section">
+    <div class="container">
+      <% if user_signed_in? %>
+        <div class="user-dashboard">
+          <h2>Welcome, <%= current_user.name || current_user.email %></h2>
+          <div class="stats-cards">
+            <div class="stat-card">
+              <h3>0</h3>
+              <p>Repositories Explored</p>
+            </div>
+            <div class="stat-card">
+              <h3>0</h3>
+              <p>Files Viewed</p>
+            </div>
+            <div class="stat-card">
+              <h3>0</h3>
+              <p>Exercises Completed</p>
+            </div>
+          </div>
+          
+          <div class="user-actions">
+            <%= link_to "Continue Learning", repositories_path, class: "btn btn-primary" %>
+            <%= button_to "Sign Out", destroy_user_session_path, method: :delete, class: "btn btn-outline" %>
+          </div>
+        </div>
+      <% else %>
+        <div class="auth-card">
+          <h2>Start Your Learning Journey</h2>
+          <p>Connect with GitHub to start exploring real codebases or create an account to track your progress.</p>
+          
+          <div class="auth-options">
+            <%= button_to "Sign in with GitHub", user_github_omniauth_authorize_path, data: { turbo: false }, class: "btn btn-primary btn-block" %>
+            
+            <div class="divider">or</div>
+            
+            <div class="email-auth">
+              <%= link_to "Create Account", new_user_registration_path, class: "btn btn-outline btn-block" %>
+              <%= link_to "Sign In", new_user_session_path, class: "btn btn-outline btn-block" %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features-section">
+    <div class="container">
+      <h2 class="section-title">Why Primeta.ai?</h2>
+      <p class="section-description">A better way to master production code patterns and architecture</p>
+      
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+            </svg>
+          </div>
+          <h3>Interactive Navigation</h3>
+          <p>Explore real-world repositories with powerful navigation and search capabilities</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+          </div>
+          <h3>Context Insights</h3>
+          <p>Get AI-powered explanations and insights about code functionality and structure</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+          </div>
+          <h3>Track Progress</h3>
+          <p>See which files you've studied and how much of the codebase you've mastered</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+          </div>
+          <h3>Coding Exercises</h3>
+          <p>Test your understanding with practical exercises based on real code patterns</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Meet Primeta Section -->
+  <section class="meet-primeta-section">
+    <div class="container">
+      <div class="primeta-content">
+        <div class="primeta-image">
+          <div class="ai-avatar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+            <div class="glow-effect"></div>
+          </div>
+        </div>
+        <div class="primeta-description">
+          <h2>Meet Primeta, Your AI Learning Assistant</h2>
+          <p>Primeta is more than just an AI—it's your personalized guide through complex codebases. Trained on thousands of repositories, Primeta understands code structure, architectural patterns, and implementation details across multiple languages and frameworks.</p>
+          
+          <div class="primeta-features">
+            <div class="primeta-feature">
+              <h3>Contextual Explanations</h3>
+              <p>Get plain-English explanations of what any piece of code does and how it connects to the broader codebase.</p>
+            </div>
+            <div class="primeta-feature">
+              <h3>Learning Recommendations</h3>
+              <p>Receive suggestions on which files to explore next based on your learning goals and progress.</p>
+            </div>
+            <div class="primeta-feature">
+              <h3>Interactive Exercises</h3>
+              <p>Test your understanding through customized coding exercises that reinforce real-world patterns.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Production Code Benefits Section -->
+  <section class="code-benefits-section">
+    <div class="container">
+      <h2 class="section-title">Why Learn From Production Code?</h2>
+      <p class="section-description">Reading and understanding real-world codebases is the secret weapon of senior developers</p>
+      
+      <div class="benefits-grid">
+        <div class="benefit-card">
+          <div class="benefit-number">01</div>
+          <h3>Beyond Tutorials</h3>
+          <p>Learn how code actually works in the real world, not just in idealized tutorial examples. See how senior developers handle edge cases, performance optimization, and technical debt.</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-number">02</div>
+          <h3>Architecture Patterns</h3>
+          <p>Understand how large applications are structured and organized. Discover patterns that scale from small projects to enterprise systems with millions of users.</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-number">03</div>
+          <h3>Collaboration Workflows</h3>
+          <p>See how teams coordinate through code comments, commit messages, and project organization. Learn the unwritten rules of professional development.</p>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-number">04</div>
+          <h3>Practical Problem-Solving</h3>
+          <p>Observe how real engineering teams solve complex technical challenges. Build a mental library of solutions you can apply to your own projects.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <div class="container">
+      <div class="cta-content">
+        <h2>Ready to become a better developer?</h2>
+        <p>Join thousands of developers who are mastering production codebases with Primeta.ai</p>
+        <% if !user_signed_in? %>
+          <%= button_to "Get Started for Free", user_github_omniauth_authorize_path, data: { turbo: false }, class: "btn btn-primary btn-lg" %>
+        <% else %>
+          <%= link_to "Continue Learning", repositories_path, class: "btn btn-primary btn-lg" %>
+        <% end %>
+      </div>
+    </div>
+  </section>
 </div>
 
 <style>
-  .hero-section {
-    margin: 3rem 0;
-    text-align: center;
+  /* Landing Page Styles - Dark Mode */
+  .landing-container {
+    background-color: var(--dark-bg-color);
+    color: var(--text-light-color);
   }
   
-  .hero-section h1 {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
+  /* Hero Section */
+  .hero {
+    background: linear-gradient(135deg, #090921 0%, #0A0A23 100%);
+    color: white;
+    padding: 4rem 0;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .hero::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(rgba(41, 121, 255, 0.15) 2px, transparent 2px);
+    background-size: 30px 30px;
+    opacity: 0.6;
+  }
+  
+  .hero .container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+  
+  .hero-content {
+    z-index: 1;
+  }
+  
+  .hero h1 {
+    font-size: 3rem;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    color: white;
     font-weight: 700;
   }
   
-  .tagline {
-    font-size: 1.2rem;
-    color: #666;
+  .hero-tagline {
+    font-size: 1.3rem;
+    color: rgba(255, 255, 255, 0.9);
     margin-bottom: 2rem;
   }
   
+  .hero-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+  }
+  
+  .btn-lg {
+    padding: 0.7rem 1.5rem;
+    font-size: 1.1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 160px;
+  }
+  
+  /* Code Browser Mockup */
+  .code-browser-mockup {
+    background-color: #0E0E2A;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    z-index: 1;
+  }
+  
+  .browser-header {
+    background-color: #121236;
+    padding: 0.8rem;
+    display: flex;
+    align-items: center;
+  }
+  
+  .browser-dots {
+    display: flex;
+    gap: 6px;
+  }
+  
+  .browser-dots span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #ff5f56;
+  }
+  
+  .browser-dots span:nth-child(2) {
+    background-color: #ffbd2e;
+  }
+  
+  .browser-dots span:nth-child(3) {
+    background-color: #27c93f;
+  }
+  
+  .browser-address {
+    background-color: #080820;
+    color: #9e9e9e;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    margin-left: 1rem;
+    flex: 1;
+  }
+  
+  .browser-content {
+    display: flex;
+    height: 300px;
+  }
+  
+  .file-tree {
+    background-color: #121236;
+    width: 30%;
+    padding: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+  
+  .folder, .file {
+    padding: 0.3rem 0;
+    cursor: pointer;
+  }
+  
+  .folder::before {
+    content: "📁 ";
+  }
+  
+  .file::before {
+    content: "📄 ";
+  }
+  
+  .folder.active, .file.active {
+    color: var(--primary-color);
+  }
+  
+  .code-view {
+    background-color: #0E0E2A;
+    width: 70%;
+    padding: 1rem;
+    overflow: auto;
+  }
+  
+  .code-view pre {
+    margin: 0;
+    color: #fff;
+    font-family: monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  
+  /* Auth Section */
   .auth-section {
-    margin: 2rem 0;
-    padding: 2rem;
+    padding: 4rem 0;
+    background-color: #0F0F28;
   }
   
-  .user-actions {
-    margin-top: 1.5rem;
+  .auth-card {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 2.5rem;
+    background-color: #141440;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   }
   
-  .features {
-    margin: 3rem 0;
+  .auth-card h2 {
+    margin-bottom: 1rem;
+    text-align: center;
+    color: white;
   }
   
-  .features h2 {
+  .auth-card p {
     text-align: center;
     margin-bottom: 2rem;
+    color: rgba(255, 255, 255, 0.7);
   }
   
-  .feature-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
+  .auth-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
   
-  .feature-item {
-    background-color: white;
-    padding: 1.5rem;
-    border-radius: var(--border-radius);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transition: transform 0.3s;
-  }
-  
-  .feature-item:hover {
-    transform: translateY(-4px);
-  }
-  
-  .feature-item h3 {
-    color: var(--primary-color);
-    margin-bottom: 0.75rem;
+  .btn-block {
+    width: 100%;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 42px;
   }
   
   .divider {
     margin: 1rem 0;
     text-align: center;
     position: relative;
+    color: rgba(255, 255, 255, 0.5);
   }
   
   .divider::before,
@@ -128,8 +451,332 @@
     display: inline-block;
     width: 40%;
     height: 1px;
-    background-color: #ddd;
+    background-color: rgba(255, 255, 255, 0.2);
     margin: 0 0.5rem;
     vertical-align: middle;
+  }
+  
+  .email-auth {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  
+  /* User Dashboard */
+  .user-dashboard {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+    color: white;
+  }
+  
+  .stats-cards {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 2rem 0;
+  }
+  
+  .stat-card {
+    background-color: #141440;
+    padding: 1.5rem;
+    border-radius: 8px;
+    min-width: 150px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  .stat-card h3 {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+  }
+  
+  .stat-card p {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  
+  .user-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+  
+  .user-actions .btn {
+    min-width: 140px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Meet Primeta Section */
+  .meet-primeta-section {
+    padding: 6rem 0;
+    background-color: #070718;
+  }
+  
+  .primeta-content {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 3rem;
+    align-items: center;
+  }
+  
+  .ai-avatar {
+    width: 200px;
+    height: 200px;
+    background-color: var(--primary-color);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    position: relative;
+    margin: 0 auto;
+    box-shadow: 0 10px 30px rgba(41, 121, 255, 0.3);
+  }
+  
+  .glow-effect {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 16px;
+    background: radial-gradient(circle at center, rgba(41, 121, 255, 0.8) 0%, rgba(41, 121, 255, 0) 70%);
+    filter: blur(20px);
+    opacity: 0.6;
+    z-index: -1;
+    animation: pulse 4s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 0.6; }
+  }
+  
+  .primeta-description h2 {
+    margin-bottom: 1.5rem;
+    font-size: 2.2rem;
+    color: white;
+  }
+  
+  .primeta-description > p {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+  
+  .primeta-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+  
+  .primeta-feature h3 {
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+  }
+  
+  .primeta-feature p {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  
+  /* Features Section */
+  .features-section {
+    padding: 5rem 0;
+    background-color: #0A0A23;
+  }
+  
+  .section-title {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: white;
+  }
+  
+  .section-description {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    max-width: 600px;
+    margin: 0 auto 3rem;
+    font-size: 1.2rem;
+  }
+  
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+  }
+  
+  .feature-card {
+    background-color: #141440;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  
+  .feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+  }
+  
+  .feature-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: rgba(41, 121, 255, 0.2);
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+  }
+  
+  .feature-card h3 {
+    margin-bottom: 1rem;
+    color: white;
+  }
+  
+  .feature-card p {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  
+  /* Production Code Benefits Section */
+  .code-benefits-section {
+    padding: 6rem 0;
+    background-color: #0D0D26;
+  }
+  
+  .benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+  }
+  
+  .benefit-card {
+    background-color: #141440;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .benefit-number {
+    font-size: 4rem;
+    font-weight: 700;
+    color: rgba(41, 121, 255, 0.15);
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-family: 'Sora', sans-serif;
+  }
+  
+  .benefit-card h3 {
+    position: relative;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    color: white;
+  }
+  
+  .benefit-card p {
+    position: relative;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.6;
+  }
+  
+  /* CTA Section */
+  .cta-section {
+    background: linear-gradient(135deg, #1A57B8 0%, #0F2E5C 100%);
+    color: white;
+    padding: 5rem 0;
+    text-align: center;
+  }
+  
+  .cta-content {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  
+  .cta-section h2 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: white;
+  }
+  
+  .cta-section p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  /* Button styles */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    text-decoration: none;
+    border-radius: var(--border-radius);
+    border: none;
+    cursor: pointer;
+    font-family: 'Sora', sans-serif;
+    font-weight: 500;
+    transition: background-color 0.3s, transform 0.2s;
+    min-height: 40px;
+    line-height: 1.2;
+  }
+  
+  /* Dark mode button styles */
+  .btn-outline {
+    background-color: transparent;
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+    min-height: 40px;
+  }
+  
+  .btn-outline:hover {
+    background-color: rgba(41, 121, 255, 0.2);
+    color: white;
+    border-color: var(--primary-color);
+  }
+  
+  /* Responsive styles */
+  @media (max-width: 768px) {
+    .hero .container {
+      grid-template-columns: 1fr;
+      text-align: center;
+    }
+    
+    .hero-cta {
+      justify-content: center;
+    }
+    
+    .stats-cards {
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .stat-card {
+      width: 100%;
+    }
+    
+    .primeta-content {
+      grid-template-columns: 1fr;
+      text-align: center;
+    }
+    
+    .benefits-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
