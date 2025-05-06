@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_06_011412) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_06_041500) do
   create_table "file_views", force: :cascade do |t|
     t.integer "user_id", null: false
     t.integer "repository_file_id", null: false
@@ -45,6 +45,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_06_011412) do
     t.datetime "last_updated_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "is_key_file", default: false
+    t.index ["is_key_file"], name: "index_repository_files_on_is_key_file"
     t.index ["repository_id"], name: "index_repository_files_on_repository_id"
   end
 

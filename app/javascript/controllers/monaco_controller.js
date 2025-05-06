@@ -34,99 +34,77 @@ export default class extends Controller {
     // Track view time
     this.startTime = new Date()
     
-    window.addEventListener('resize', this.resizeEditor.bind(this))
-    
     // Handle navigation away from page to record time spent
     window.addEventListener('beforeunload', this.recordTimeSpent.bind(this))
   }
   
   initializeEditor() {
-    const monaco = window.monaco;
-    const theme = 'vs-dark';
+    if (!window.monaco) return;
     
-    // Define theme colors
-    monaco.editor.defineTheme('primeta-dark', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [
-        { token: 'comment', foreground: '6A9955' },
-        { token: 'keyword', foreground: '569CD6', fontStyle: 'bold' },
-        { token: 'string', foreground: 'CE9178' }
-      ],
-      colors: {
-        'editor.background': '#0A0A23', // Brand dark navy
-        'editor.foreground': '#F5F7FA', // Brand light gray
-        'editorCursor.foreground': '#2979FF', // Brand electric blue
-        'editor.lineHighlightBackground': '#1E1E3F',
-        'editorLineNumber.foreground': '#858585',
-        'editorLineNumber.activeForeground': '#2979FF', // Brand electric blue
-        'editor.selectionBackground': '#2979FF33', // Transparent electric blue
-        'editorIndentGuide.background': '#2F2F55'
+    // Use viewport height units to fill the screen and full width
+    this.element.style.height = '85vh'; // 85% of viewport height
+    this.element.style.width = '100%';
+    this.element.style.maxWidth = '100%';
+    this.element.style.overflow = 'hidden';
+    
+    // Absolute minimal editor config for best performance
+    this.editor = window.monaco.editor.create(this.element, {
+      value: this.contentValue || '',
+      language: this.languageValue || 'plaintext',
+      theme: 'vs-dark',
+      readOnly: this.readOnlyValue || false,
+      automaticLayout: false,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      renderLineHighlight: 'none',
+      overviewRulerBorder: false,
+      overviewRulerLanes: 0,
+      hideCursorInOverviewRuler: true,
+      renderIndentGuides: false,
+      contextmenu: false,
+      folding: false,
+      glyphMargin: false,
+      lineDecorationsWidth: 0,
+      lineNumbers: 'on',
+      lineNumbersMinChars: 3,
+      renderWhitespace: 'none',
+      smoothScrolling: false,
+      find: {
+        addExtraSpaceOnTop: false,
+        autoFindInSelection: 'never'
       }
     });
     
-    // Set default theme
-    monaco.editor.setTheme('primeta-dark');
+    // Minimal resize handler with long debounce
+    let resizeTimeout;
+    const handleResize = () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (this.editor) this.editor.layout();
+      }, 500); // Very long debounce
+    };
     
-    // Ensure content has proper line breaks
-    const processedContent = this.ensureProperLineBreaks(this.contentValue || '');
+    // Only resize on explicit window resize
+    window.addEventListener('resize', handleResize);
+    this.resizeHandler = handleResize;
     
-    this.editor = monaco.editor.create(this.element, {
-      value: processedContent,
-      language: this.languageValue || 'plaintext',
-      theme: 'primeta-dark',
-      readOnly: this.readOnlyValue || false,
-      automaticLayout: true,
-      minimap: {
-        enabled: true
-      },
-      wordWrap: 'on',
-      wrappingIndent: 'same',
-      wrappingStrategy: 'advanced',
-      scrollBeyondLastLine: false,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      fontSize: 14,
-      lineNumbers: "on",
-      renderIndentGuides: true,
-      scrollbar: {
-        useShadows: false,
-        verticalScrollbarSize: 10,
-        horizontalScrollbarSize: 10
-      }
-    })
-  }
-  
-  // Helper method to ensure content has proper line breaks
-  ensureProperLineBreaks(content) {
-    if (!content) return '';
-    
-    // If the content doesn't have line breaks, try to detect and add them
-    if (!content.includes('\n')) {
-      // For common programming languages, try to add breaks after semicolons, braces
-      return content
-        .replace(/;\s*/g, ';\n')
-        .replace(/{\s*/g, '{\n')
-        .replace(/}\s*/g, '}\n')
-        .replace(/>\s*</g, '>\n<');
-    }
-    
-    return content;
+    // Initial layout
+    setTimeout(() => {
+      if (this.editor) this.editor.layout();
+    }, 100);
   }
   
   disconnect() {
     if (this.editor) {
-      this.recordTimeSpent()
-      this.editor.dispose()
+      this.recordTimeSpent();
+      this.editor.dispose();
     }
     
-    window.removeEventListener('resize', this.resizeEditor.bind(this))
-    window.removeEventListener('beforeunload', this.recordTimeSpent.bind(this))
-  }
-  
-  resizeEditor() {
-    if (this.editor) {
-      this.editor.layout()
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
     }
+    
+    window.removeEventListener('beforeunload', this.recordTimeSpent.bind(this));
   }
   
   recordTimeSpent() {

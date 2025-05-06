@@ -97,10 +97,18 @@ a:hover {
 }
 
 /* Cards */
-.repo-card, .file-stats, .auth-section, .form-container {
+.repo-card, .auth-section, .form-container {
   background-color: white;
   border-radius: var(--border-radius);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+/* Dark cards */
+.file-stats {
+  color: var(--text-light-color);
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   transition: transform 0.3s, box-shadow 0.3s;
 }
 

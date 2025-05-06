@@ -10,13 +10,13 @@
     </div>
   </div>
 
-  <div class="repository-content" data-controller="inline-editor" data-inline-editor-repository-id-value="<%= @repository.id %>">
+  <div class="repository-content" data-controller="inline-editor" 
+       data-inline-editor-repository-id-value="<%= @repository.id %>">
     <div class="sidebar">
       <h3>Files</h3>
       
       <% if @repository.repository_files.any? %>
         <div class="file-explorer" data-controller="file-explorer">
-          <input type="text" id="file-search" placeholder="Search files..." class="file-search">
           <div class="file-tree">
             <%= render partial: 'directory_tree', locals: { tree: @directory_structure, level: 0, parent_path: '' } %>
           </div>
@@ -38,13 +38,44 @@
         
         <hr class="info-divider">
         
-        <h2>Repository Information</h2>
-        <p>This repository contains <%= @repository.repository_files.count %> files.</p>
-        <p>Clone URL: <code><%= @repository.clone_url %></code></p>
-        <p>Default Branch: <code><%= @repository.default_branch %></code></p>
+        <h2>Your Progress</h2>
+        
+        <%= turbo_stream_from "repository_#{@repository.id}_progress" %>
+        <%= render partial: 'repositories/progress', locals: {
+            repository: @repository,
+            total_files_count: @total_files_count,
+            viewed_files_count: @viewed_files_count,
+            files_progress_percentage: @files_progress_percentage,
+            key_files_count: @key_files_count,
+            viewed_key_files_count: @viewed_key_files_count,
+            key_files_progress_percentage: @key_files_progress_percentage
+        } %>
         
         <h3>Getting Started</h3>
         <p>Select a file from the sidebar to view its content and start tracking your progress.</p>
+        
+        <% if @key_files.any? %>
+          <h3>Key Files</h3>
+          <p>These files have been marked as particularly important to understanding this repository:</p>
+          <div class="key-files-list">
+            <% @key_files.each do |file| %>
+              <div class="key-file-item">
+                <span class="key-file-star">★</span>
+                <%= link_to file.path, "#", 
+                    data: {
+                      path: file.path,
+                      file_id: file.id,
+                      action: "click->inline-editor#showFile"
+                    } %>
+              </div>
+            <% end %>
+            <% unless current_user.admin? %>
+              <div class="key-file-note">
+                <small>Note: Only administrators can mark files as key files.</small>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
       </div>
       
       <div class="editor-container" data-inline-editor-target="editorContainer" style="display: none;">
@@ -56,30 +87,6 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // File search functionality
-    const searchInput = document.getElementById('file-search');
-    const fileItems = document.querySelectorAll('.file-item');
-    
-    searchInput.addEventListener('input', function() {
-      const searchTerm = this.value.toLowerCase();
-      
-      fileItems.forEach(function(item) {
-        const fileName = item.querySelector('a').textContent.toLowerCase();
-        const shouldShow = fileName.includes(searchTerm);
-        
-        item.style.display = shouldShow ? 'block' : 'none';
-        
-        // If this is a file in a directory, also show the directory
-        if (shouldShow) {
-          let parent = item.parentNode;
-          while (parent && parent.classList.contains('dir-contents')) {
-            parent.parentNode.classList.add('expanded');
-            parent = parent.parentNode.parentNode;
-          }
-        }
-      });
-    });
-    
     // Mark files as viewed when clicked
     document.addEventListener('click', function(event) {
       const fileLink = event.target.closest('a[data-file-id]');
@@ -97,10 +104,13 @@
     height: 100vh;
     margin: 0;
     padding: 0;
+    background-color: #0A0A23; /* Dark navy background */
+    color: #F5F7FA; /* Light text color */
   }
 
   .repository-container {
-    max-width: 1800px;
+    max-width: 98vw; /* Nearly full viewport width */
+    width: 98vw;
     height: calc(100vh - 90px); /* Adjusted for no footer */
     padding: 0 1rem 20px;
     display: flex;
@@ -108,6 +118,8 @@
     overflow-y: auto;
     overflow-x: hidden;
     margin-bottom: 0;
+    margin-left: auto;
+    margin-right: auto;
   }
   
   .header {
@@ -122,55 +134,56 @@
   }
   
   .breadcrumbs {
-    color: #666;
+    color: #aaa;
+  }
+  
+  .breadcrumbs a {
+    color: #3498db;
   }
   
   .repository-content {
     display: grid;
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: 280px minmax(0, 1fr);
     gap: 1rem;
     flex: 1;
-    min-height: 0;
-    overflow: hidden; /* No scrolling on the grid itself */
-    max-height: 100%; /* Ensure it doesn't exceed container */
+    overflow: hidden;
+    width: 100%;
+    height: 85vh;
   }
   
   .sidebar {
-    background-color: white;
-    border-radius: var(--border-radius);
-    padding: 0.75rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    background-color: #1E1E3F;
+    border-radius: 8px;
+    padding: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    height: 85vh;
     display: flex;
     flex-direction: column;
-    height: 100%; max-height: calc(100vh - 100px);
     overflow: hidden;
-    /* Prevent outer scrolling */
+  }
+  
+  .sidebar h3 {
+    color: #F5F7FA;
+    margin: 0;
+    padding: 12px;
+    border-bottom: 1px solid #333;
   }
   
   .file-explorer {
+    flex: 1;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    height: 100%;
-    overflow: hidden; /* No scrolling for the explorer container */
-  }
-  
-  .file-search {
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    flex-shrink: 0;
   }
   
   .file-tree {
     flex: 1;
-    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-y: auto;
     overflow-x: hidden;
-    padding-right: 5px;
-    border-top: 1px solid #eee;
-    padding-top: 0.5rem;
-    margin-top: 0.5rem; max-height: calc(100% - 40px);
+    padding: 8px 12px 12px 12px;
+    margin: 0;
   }
   
   .dir-item {
@@ -192,13 +205,17 @@
     justify-content: center;
     align-items: center;
     font-size: 12px;
-    border: 1px solid #ddd;
+    border: 1px solid #444;
     border-radius: 2px;
+    background-color: #252550;
   }
   
   .dir-contents {
-    padding-left: 1.5rem;
+    padding-left: 0.75rem;
     display: none;
+    max-height: none;
+    height: auto;
+    position: static;
   }
   
   .dir-item.expanded > .dir-contents {
@@ -206,43 +223,102 @@
   }
   
   .dir-item.expanded > .dir-header .dir-toggle {
-    background-color: #f0f0f0;
+    background-color: #333366;
+  }
+  
+  .dir-name {
+    color: #aaa;
   }
   
   .file-item {
-    padding: 0.25rem 0 0.25rem 1.5rem;
+    padding: 0.25rem 0 0.25rem 0.75rem;
+    position: static;
   }
   
   .file-item a {
     text-decoration: none;
-    color: #333;
+    color: #F5F7FA;
     display: block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
   }
   
   .file-item a.viewed-file {
     color: #2ecc71; /* Green color for viewed files */
-    font-weight: 500; /* Slightly bolder */
+    font-weight: 500;
+  }
+  
+  .file-item a.current-file {
+    background-color: #2979FF33; /* Transparent blue background */
+    color: #3498db; /* Blue text */
+    font-weight: 600;
+    border-left: 2px solid #3498db; /* Blue left border */
+    position: static; /* Changed from relative to static */
+    box-shadow: none; /* Removed shadow that could affect layout */
+    margin-left: -2px; /* Compensate for the border */
+    padding-left: 4px; /* Adjusted padding to account for border */
   }
   
   .file-item a:hover {
     text-decoration: underline;
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .file-item a .key-file-star {
+    display: inline-block;
+    transform: translateY(1px);
+  }
+  
+  .key-file-star {
+    color: #f1c40f;
+    margin-right: 4px;
+    font-size: 1.1em;
+  }
+  
+  .key-file-toggle {
+    display: flex;
+    align-items: center;
+    background-color: #252550;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-left: 15px;
+    transition: all 0.2s ease;
+    color: #F5F7FA;
+  }
+  
+  .key-file-toggle:hover {
+    background-color: #333366;
+  }
+  
+  .key-file-toggle.active {
+    background-color: #413B00;
+    border-color: #f1c40f;
+  }
+  
+  .key-file-toggle .key-file-star {
+    margin-right: 5px;
   }
   
   .content {
-    background-color: white;
+    background-color: #1E1E3F; /* Dark purple */
     border-radius: var(--border-radius);
-    padding: 1rem 1.5rem 1.5rem; /* Increased horizontal padding */
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 1rem 1rem 1rem; /* Reduced padding */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     height: 100%;
     overflow-y: auto;
-    overflow-x: hidden; /* Allow scrolling */
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     width: 100%;
-    box-sizing: border-box; /* Ensure padding is included in width */
+    box-sizing: border-box;
+    max-width: 100%;
   }
   
   .info-panel {
@@ -254,15 +330,16 @@
   .repository-title {
     font-size: 1.8rem;
     margin: 0 0 0.5rem 0;
+    color: #F5F7FA;
   }
   
   .repository-description {
     margin-bottom: 1rem;
-    color: #444;
+    color: #bbb;
   }
   
   .repository-meta {
-    color: #666;
+    color: #aaa;
     font-size: 0.9rem;
     margin-bottom: 1.5rem;
   }
@@ -270,8 +347,95 @@
   .info-divider {
     border: 0;
     height: 1px;
-    background-color: #eee;
+    background-color: #333;
     margin: 1rem 0;
+  }
+  
+  .info-panel h2, .info-panel h3 {
+    color: #F5F7FA;
+  }
+  
+  .info-panel h3 {
+    margin-top: 0.75rem;
+  }
+  
+  .progress-section {
+    margin: 1rem 0 1.5rem;
+  }
+  
+  .progress-metric {
+    margin-bottom: 1rem;
+  }
+  
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #F5F7FA;
+  }
+  
+  .progress-value {
+    color: #aaa;
+    font-weight: normal;
+  }
+  
+  .progress-bar-container {
+    height: 8px;
+    background-color: #252550;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.25rem;
+  }
+  
+  .progress-bar {
+    height: 100%;
+    background-color: #3498db;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+  
+  .progress-bar-key {
+    background-color: #f1c40f;
+  }
+  
+  .progress-percentage {
+    text-align: right;
+    font-size: 0.9rem;
+    color: #aaa;
+  }
+  
+  .key-files-list {
+    margin-top: 10px;
+    border: 1px solid #413B00;
+    border-radius: 4px;
+    padding: 10px;
+    background-color: #252525;
+  }
+  
+  .key-file-item {
+    padding: 6px 0;
+    display: flex;
+    align-items: center;
+  }
+  
+  .key-file-item a {
+    color: #F5F7FA;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .key-file-item a:hover {
+    text-decoration: underline;
+  }
+  
+  .key-file-note {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed #413B00;
+    font-style: italic;
+    color: #aaa;
   }
   
   .editor-container {
@@ -301,7 +465,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background-color: var(--primary-color);
+    background-color: #3498db;
     color: white;
     border: none;
     border-radius: 4px;
@@ -310,18 +474,18 @@
     font-size: 0.95rem;
     font-weight: 500;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
   
   .back-button:hover {
     background-color: #2980b9;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
     transform: translateY(-1px);
   }
   
   .back-button:active {
     transform: translateY(1px);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
   
   .back-icon {
@@ -333,22 +497,72 @@
     font-size: 1.2rem;
     font-weight: 600;
     word-break: break-all;
+    color: #F5F7FA;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #aaa;
+  }
+  
+  code {
+    background-color: #252550;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: #F5F7FA;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  p {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    color: #F5F7FA;
+  }
+  
+  .flash-messages {
+    margin: 0.5rem auto;
+  }
+
+  .main-footer {
+    padding: 1rem 0;
   }
   
   #monaco-container {
     flex: 1;
-    min-height: 200px; /* Reduced from 300px */
-    height: calc(100% - 150px); /* Account for header and footer */
-    border: 1px solid #eee;
+    min-height: 500px;
+    height: calc(100% - 80px);  /* Reduce the space taken by header/footer */
+    border: 1px solid #333;
     border-radius: 4px;
     overflow-y: auto;
     overflow-x: hidden;
     width: 100%;
+    max-width: 100%;
   }
   
   .file-footer {
     margin-top: 0.75rem;
-    border-top: 1px solid #eee;
+    border-top: 1px solid #333;
     padding-top: 0.75rem;
     display: flex;
     justify-content: space-between;
@@ -365,9 +579,9 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    color: #444;
+    color: #bbb;
     font-size: 0.9rem;
-    max-width: 60%; /* Adjusted to give more space */
+    max-width: 60%;
     overflow: visible;
   }
   
@@ -379,7 +593,7 @@
   }
   
   .file-icon {
-    color: #666;
+    color: #aaa;
     flex-shrink: 0;
   }
   
@@ -389,196 +603,35 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 400px;
+    color: #F5F7FA;
   }
   
   .language-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background-color: #f0f0f0;
-    color: #444;
+    background-color: #252550;
+    color: #F5F7FA;
     border-radius: 4px;
     padding: 0.25rem 0.6rem;
     font-size: 0.85rem;
     font-weight: 600;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    flex-shrink: 0; /* Don't shrink */
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     position: relative;
     z-index: 1;
     min-width: 30px;
     text-align: center;
   }
   
-  /* Language-specific badge colors */
-  .lang-js {
-    background-color: #f7df1e;
-    color: #333;
-  }
-  
-  .lang-ts {
-    background-color: #3178c6;
-    color: white;
-  }
-  
-  .lang-ruby {
-    background-color: #cc342d;
-    color: white;
-  }
-  
-  .lang-py {
-    background-color: #3776ab;
-    color: white;
-  }
-  
-  .lang-html {
-    background-color: #e34c26;
-    color: white;
-  }
-  
-  .lang-css {
-    background-color: #264de4;
-    color: white;
-  }
-  
-  .lang-java {
-    background-color: #007396;
-    color: white;
-  }
-  
-  .lang-csharp {
-    background-color: #239120;
-    color: white;
-  }
-  
-  .lang-go {
-    background-color: #00add8;
-    color: white;
-  }
-  
-  .lang-rust {
-    background-color: #dea584;
-    color: #333;
-  }
-  
-  .lang-php {
-    background-color: #777bb4;
-    color: white;
-  }
-  
-  .lang-swift {
-    background-color: #f05138;
-    color: white;
-  }
-  
-  .lang-sql {
-    background-color: #4479a1;
-    color: white;
-  }
-  
-  .lang-shell {
-    background-color: #5c5c5c;
-    color: white;
-  }
-  
-  .lang-md {
-    background-color: #083fa1;
-    color: white;
-  }
-  
-  .lang-yaml {
-    background-color: #7f7f7f;
-    color: white;
-  }
-  
-  .lang-json {
-    background-color: #000000;
-    color: white;
-  }
-  
-  .lang-xml {
-    background-color: #f16529;
-    color: white;
-  }
-  
-  /* Additional language badges */
-  .lang-c {
-    background-color: #555555;
-    color: white;
-  }
-  
-  .lang-cpp {
-    background-color: #044F88;
-    color: white;
-  }
-  
-  .lang-kotlin {
-    background-color: #A97BFF;
-    color: white;
-  }
-  
-  .lang-scala {
-    background-color: #DC322F;
-    color: white;
-  }
-  
-  .lang-groovy {
-    background-color: #4298B8;
-    color: white;
-  }
-  
-  .lang-vb {
-    background-color: #512BD4;
-    color: white;
-  }
-  
-  .lang-fs {
-    background-color: #378BBA;
-    color: white;
-  }
-  
-  .lang-powershell {
-    background-color: #012456;
-    color: white;
-  }
-  
-  .lang-bat {
-    background-color: #C1F12E;
-    color: #333;
-  }
-  
-  .lang-toml {
-    background-color: #9C4221;
-    color: white;
-  }
-  
-  .lang-docker {
-    background-color: #2496ED;
-    color: white;
-  }
-  
-  .lang-makefile {
-    background-color: #427819;
-    color: white;
-  }
-  
-  .lang-git {
-    background-color: #F05032;
-    color: white;
-  }
-  
-  .lang-default {
-    background-color: #f0f0f0;
-    color: #444;
-  }
-  
   .file-stats {
-    color: #666;
+    color: #aaa;
     font-size: 0.9rem;
     display: flex;
-    gap: 1rem; /* Reduced from 1.5rem */
+    gap: 1rem;
     flex-wrap: wrap;
-    margin-left: auto; /* Push to the right */
+    margin-left: auto;
   }
   
   .file-stats p {
@@ -589,17 +642,17 @@
     display: inline-block;
     white-space: nowrap;
     margin-right: 0.5rem;
-    font-size: 0.85rem; /* Slightly smaller font */
+    font-size: 0.85rem;
   }
   
   .stat-item strong {
     font-weight: 500;
-    color: #444;
+    color: #F5F7FA;
     margin-right: 0.25rem;
   }
   
   .stat-item .updating {
-    color: #777;
+    color: #aaa;
     font-style: italic;
     animation: pulse 1.5s infinite;
   }
@@ -613,89 +666,10 @@
   .loading, .error {
     padding: 2rem;
     text-align: center;
-    color: #666;
+    color: #aaa;
   }
   
   .error {
-    color: #d32f2f;
-  }
-  
-  code {
-    background-color: #f5f5f5;
-    padding: 0.2rem 0.4rem;
-    border-radius: 3px;
-    font-family: monospace;
-    font-size: 0.9rem;
-  }
-  
-  /* Force scrollbars to be visible on macOS */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.3);
-  }
-
-  /* Media query for smaller screens */
-  @media (max-height: 800px) {
-    .repository-title {
-      font-size: 1.5rem;
-      margin-bottom: 0.25rem;
-    }
-
-    .repository-description {
-      margin-bottom: 0.5rem;
-    }
-
-    .repository-meta {
-      margin-bottom: 0.5rem;
-    }
-
-    .info-divider {
-      margin: 0.5rem 0;
-    }
-
-    h2, h3 {
-      margin-top: 0.5rem;
-      margin-bottom: 0.25rem;
-    }
-
-    p {
-      margin-top: 0;
-      margin-bottom: 0.5rem;
-    }
-
-    .content {
-      padding: 0.75rem;
-    }
-
-    .sidebar {
-      padding: 0.5rem;
-    }
-  }
-
-  p {
-    margin-top: 0;
-    margin-bottom: 0.75rem;
-  }
-  
-  .flash-messages {
-    margin: 0.5rem auto;
-  }
-
-  .main-footer {
-    padding: 1rem 0;
+    color: #e74c3c;
   }
 </style>

@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus";
 
 // Connects to data-controller="inline-editor"
 export default class extends Controller {
-  static targets = ["infoPanel", "editorContainer", "fileTitle", "fileStats", "filePath"];
+  static targets = ["infoPanel", "editorContainer", "fileTitle", "fileStats", "filePath", "keyFileToggle"];
   static values = {
     repositoryId: Number
   }
@@ -14,16 +14,29 @@ export default class extends Controller {
       editorContainer: this.hasEditorContainerTarget,
       fileTitle: this.hasFileTitleTarget,
       fileStats: this.hasFileStatsTarget,
-      filePath: this.hasFilePathTarget
+      filePath: this.hasFilePathTarget,
+      keyFileToggle: this.hasKeyFileToggleTarget
     });
     
     // Initialize state
     this.currentFileId = null;
+    this.lastViewedFileId = null;
     this.editor = null;
     this.startTime = null;
     
     // Add event handler for beforeunload to track time
     window.addEventListener('beforeunload', this.recordTimeSpent.bind(this));
+    
+    // Add a small delay to allow DOM to be fully rendered
+    setTimeout(() => {
+      // Check if we should highlight the last viewed file
+      if (this.lastViewedFileId) {
+        const fileLinks = document.querySelectorAll(`a[data-file-id="${this.lastViewedFileId}"]`);
+        fileLinks.forEach(link => {
+          link.classList.add('current-file');
+        });
+      }
+    }, 100);
   }
   
   disconnect() {
@@ -31,6 +44,11 @@ export default class extends Controller {
     if (this.editor) {
       this.recordTimeSpent();
       this.editor.dispose();
+    }
+    
+    // Remove resize handler
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
     }
     
     window.removeEventListener('beforeunload', this.recordTimeSpent.bind(this));
@@ -42,6 +60,7 @@ export default class extends Controller {
     
     const fileLink = event.currentTarget;
     const fileId = fileLink.dataset.fileId;
+    const filePath = fileLink.dataset.path || fileLink.textContent.trim();
     
     if (!fileId) return;
     
@@ -51,8 +70,48 @@ export default class extends Controller {
         this.recordTimeSpent();
       }
       
-      // Update current file ID
+      // Update current file ID and path
       this.currentFileId = fileId;
+      this.currentFilePath = filePath;
+      
+      // Remove highlight from previously selected file and add to current
+      document.querySelectorAll('.file-item a.current-file').forEach(el => {
+        el.classList.remove('current-file');
+      });
+      fileLink.classList.add('current-file');
+      fileLink.classList.add('viewed-file'); // Also mark as viewed
+      
+      // Expand all parent directories of the selected file
+      let parentElement = fileLink.closest('.dir-contents');
+      while (parentElement) {
+        const dirItem = parentElement.closest('.dir-item');
+        if (dirItem) {
+          dirItem.classList.add('expanded');
+          parentElement = dirItem.parentElement.closest('.dir-contents');
+        } else {
+          break;
+        }
+      }
+      
+      // Safer scroll method - manually adjust scroll position without using scrollIntoView
+      setTimeout(() => {
+        const fileTree = document.querySelector('.file-tree');
+        if (fileTree) {
+          const fileLinkRect = fileLink.getBoundingClientRect();
+          const fileTreeRect = fileTree.getBoundingClientRect();
+          
+          // Check if the file link is outside the visible area of the file tree
+          if (fileLinkRect.top < fileTreeRect.top || fileLinkRect.bottom > fileTreeRect.bottom) {
+            // Calculate how much to scroll to get the file link in view
+            // We'll position it about 30% down from the top of the visible area
+            const scrollTarget = fileLinkRect.top + fileTree.scrollTop - fileTreeRect.top - (fileTreeRect.height * 0.3);
+            fileTree.scrollTo({
+              top: scrollTarget,
+              behavior: 'smooth'
+            });
+          }
+        }
+      }, 100);
       
       // Check if targets exist
       if (!this.hasInfoPanelTarget || !this.hasEditorContainerTarget) {
@@ -60,9 +119,12 @@ export default class extends Controller {
         return;
       }
       
-      // Show loading state
+      // Show loading state and set to full height
       this.infoPanelTarget.style.display = 'none';
-      this.editorContainerTarget.style.display = 'block';
+      this.editorContainerTarget.style.display = 'flex';
+      this.editorContainerTarget.style.flexDirection = 'column';
+      this.editorContainerTarget.style.height = '90vh';
+      this.editorContainerTarget.style.overflow = 'hidden';
       this.editorContainerTarget.innerHTML = '<div class="loading">Loading file...</div>';
       
       // Fetch file content
@@ -79,6 +141,21 @@ export default class extends Controller {
         // Extract the filename from the path for the title
         const fileName = fileData.path.split('/').pop();
         this.fileTitleTarget.textContent = fileName;
+        
+        // Update key file toggle button if user is admin
+        if (this.hasKeyFileToggleTarget) {
+          this.keyFileToggleTarget.setAttribute('data-file-id', fileId);
+          this.keyFileToggleTarget.setAttribute('data-is-key-file', fileData.is_key_file);
+          
+          const toggleText = this.keyFileToggleTarget.querySelector('.toggle-text');
+          if (fileData.is_key_file) {
+            this.keyFileToggleTarget.classList.add('active');
+            toggleText.textContent = 'Unmark as Key File';
+          } else {
+            this.keyFileToggleTarget.classList.remove('active');
+            toggleText.textContent = 'Mark as Key File';
+          }
+        }
       } else {
         console.warn("Missing fileTitle target");
       }
@@ -136,9 +213,12 @@ export default class extends Controller {
     // Clear the container first
     this.editorContainerTarget.innerHTML = '';
     
-    // Build header structure
-    const editorHtml = `
-      <div class="editor-header">
+    // Check if user is admin
+    const isAdmin = document.body.hasAttribute('data-user-admin');
+    
+    // Build header structure with improved layout
+    let editorHtml = `
+      <div class="editor-header" style="flex-shrink: 0; margin-bottom: 10px;">
         <div class="file-title-container">
           <button data-action="click->inline-editor#showInfo" class="back-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="back-icon">
@@ -146,11 +226,22 @@ export default class extends Controller {
             </svg>
             <span>Back to Repository</span>
           </button>
-          <h2 data-inline-editor-target="fileTitle" class="file-title"></h2>
+          <h2 data-inline-editor-target="fileTitle" class="file-title"></h2>`;
+          
+    // Only show key file toggle button for admins
+    if (isAdmin) {
+      editorHtml += `
+          <button data-action="click->inline-editor#toggleKeyFile" class="key-file-toggle" data-inline-editor-target="keyFileToggle">
+            <span class="key-file-star">★</span>
+            <span class="toggle-text">Mark as Key File</span>
+          </button>`;
+    }
+    
+    editorHtml += `
         </div>
       </div>
-      <div id="monaco-container"></div>
-      <div class="file-footer">
+      <div id="monaco-container" style="flex: 1 1 auto; min-height: 0; height: auto;"></div>
+      <div class="file-footer" style="flex-shrink: 0; margin-top: 10px;">
         <div class="file-path">
           <span class="file-icon">📄</span>
           <span data-inline-editor-target="filePath" class="file-path-container"></span>
@@ -200,134 +291,14 @@ export default class extends Controller {
         
         // Load the basic editor first
         window.require(['vs/editor/editor.main'], () => {
-          this.loadLanguageSupport(language).then(() => {
-            this.createEditor(content, language);
-          });
+          this.createEditor(content, language);
         });
       };
       document.head.appendChild(script);
     }
   }
   
-  // Load language-specific syntax highlighting
-  async loadLanguageSupport(language) {
-    if (!window.monaco) return;
-    
-    // Map file extensions to Monaco language IDs if needed
-    const languageMap = {
-      'rb': 'ruby',
-      'js': 'javascript',
-      'jsx': 'javascript',
-      'ts': 'typescript',
-      'tsx': 'typescript',
-      'py': 'python',
-      'html': 'html',
-      'css': 'css',
-      'scss': 'scss',
-      'sass': 'scss',
-      'less': 'less',
-      'json': 'json',
-      'md': 'markdown',
-      'yml': 'yaml',
-      'yaml': 'yaml',
-      'sql': 'sql',
-      'sh': 'shell',
-      'bash': 'shell',
-      'xml': 'xml',
-      'go': 'go',
-      'java': 'java',
-      'c': 'c',
-      'cpp': 'cpp',
-      'cs': 'csharp',
-      'php': 'php',
-      'rs': 'rust',
-      'swift': 'swift',
-      'dart': 'dart',
-      'vue': 'html'
-    };
-    
-    // Normalize the language identifier
-    const normalizedLanguage = languageMap[language] || language || 'plaintext';
-    
-    // Define additional language-specific theme customizations
-    if (normalizedLanguage) {
-      this.customizeLanguageTheme(normalizedLanguage);
-    }
-  }
-  
-  // Apply language-specific theme customizations
-  customizeLanguageTheme(language) {
-    if (!window.monaco) return;
-    
-    const monaco = window.monaco;
-    const baseTheme = {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [
-        { token: 'comment', foreground: '6A9955' },
-        { token: 'keyword', foreground: '569CD6', fontStyle: 'bold' },
-        { token: 'string', foreground: 'CE9178' }
-      ],
-      colors: {
-        'editor.background': '#0A0A23', // Brand dark navy
-        'editor.foreground': '#F5F7FA', // Brand light gray
-        'editorCursor.foreground': '#2979FF', // Brand electric blue
-        'editor.lineHighlightBackground': '#1E1E3F',
-        'editorLineNumber.foreground': '#858585',
-        'editorLineNumber.activeForeground': '#2979FF', // Brand electric blue
-        'editor.selectionBackground': '#2979FF33', // Transparent electric blue
-        'editorIndentGuide.background': '#2F2F55'
-      }
-    };
-    
-    // Language-specific theme customizations
-    const languageThemes = {
-      ruby: {
-        rules: [
-          { token: 'keyword.control.ruby', foreground: 'C586C0' },
-          { token: 'constant.language.ruby', foreground: '4EC9B0' },
-          { token: 'variable.other.ruby', foreground: '9CDCFE' },
-          { token: 'support.function.kernel.ruby', foreground: 'DCDCAA' },
-          { token: 'constant.other.symbol.ruby', foreground: 'B5CEA8' }
-        ]
-      },
-      javascript: {
-        rules: [
-          { token: 'variable.other.constant.js', foreground: '4FC1FF' },
-          { token: 'entity.name.function.js', foreground: 'DCDCAA' },
-          { token: 'keyword.operator.new.js', foreground: 'C586C0' },
-          { token: 'variable.other.readwrite.js', foreground: '9CDCFE' }
-        ]
-      },
-      python: {
-        rules: [
-          { token: 'keyword.control.flow.python', foreground: 'C586C0' },
-          { token: 'support.function.builtin.python', foreground: '4EC9B0' },
-          { token: 'support.type.python', foreground: '4FC1FF' }
-        ]
-      },
-      // Add more language-specific customizations as needed
-    };
-    
-    // Merge base theme with language-specific theme
-    const themeRules = [...baseTheme.rules];
-    const languageSpecificTheme = languageThemes[language];
-    
-    if (languageSpecificTheme && languageSpecificTheme.rules) {
-      themeRules.push(...languageSpecificTheme.rules);
-    }
-    
-    // Define the combined theme
-    monaco.editor.defineTheme('primeta-dark', {
-      ...baseTheme,
-      rules: themeRules
-    });
-    
-    // Set the theme
-    monaco.editor.setTheme('primeta-dark');
-  }
-  
-  // Create the Monaco editor instance
+  // Create the Monaco editor instance with minimal features for maximum performance
   createEditor(content, language) {
     if (!this.hasEditorContainerTarget) {
       console.error("Cannot create editor: missing editorContainer target");
@@ -336,44 +307,17 @@ export default class extends Controller {
     
     const monaco = window.monaco;
     
-    // Map file extensions to Monaco language IDs if needed
+    // Simple language mapping
     const languageMap = {
       'rb': 'ruby',
       'js': 'javascript',
-      'jsx': 'javascript',
-      'ts': 'typescript',
-      'tsx': 'typescript',
       'py': 'python',
       'html': 'html',
-      'css': 'css',
-      'scss': 'scss',
-      'sass': 'scss',
-      'less': 'less',
-      'json': 'json',
-      'md': 'markdown',
-      'yml': 'yaml',
-      'yaml': 'yaml',
-      'sql': 'sql',
-      'sh': 'shell',
-      'bash': 'shell',
-      'xml': 'xml',
-      'go': 'go',
-      'java': 'java',
-      'c': 'c',
-      'cpp': 'cpp',
-      'cs': 'csharp',
-      'php': 'php',
-      'rs': 'rust',
-      'swift': 'swift',
-      'dart': 'dart',
-      'vue': 'html'
+      'css': 'css'
     };
     
     // Normalize the language identifier
     const normalizedLanguage = languageMap[language] || language || 'plaintext';
-    
-    // Apply language-specific theme customizations
-    this.customizeLanguageTheme(normalizedLanguage);
     
     // Find the monaco container
     const editorContainer = this.editorContainerTarget.querySelector('#monaco-container');
@@ -382,38 +326,55 @@ export default class extends Controller {
       return;
     }
     
-    // Ensure the editor container has proper size
-    editorContainer.style.height = 'calc(100% - 120px)';
+    // Set full width and optimize overflow
     editorContainer.style.width = '100%';
+    editorContainer.style.overflow = 'hidden';
     
-    // Create the editor
+    // Create minimal editor
     this.editor = monaco.editor.create(editorContainer, {
       value: content,
       language: normalizedLanguage,
-      theme: 'primeta-dark',
+      theme: 'vs-dark',
       readOnly: true,
-      automaticLayout: true,
-      minimap: {
-        enabled: true
-      },
-      wordWrap: 'on',
-      wrappingIndent: 'same',
-      wrappingStrategy: 'advanced',
+      automaticLayout: false,
+      minimap: { enabled: false },
       scrollBeyondLastLine: false,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      fontSize: 14,
-      lineNumbers: "on",
-      renderIndentGuides: true,
-      scrollbar: {
-        useShadows: false,
-        verticalScrollbarSize: 10,
-        horizontalScrollbarSize: 10
-      },
-      // Enhanced syntax highlighting options
-      tokenization: {
-        maxTokenizationLineLength: 5000
+      renderLineHighlight: 'none',
+      overviewRulerBorder: false,
+      overviewRulerLanes: 0,
+      hideCursorInOverviewRuler: true,
+      renderIndentGuides: false,
+      contextmenu: false,
+      folding: false,
+      glyphMargin: false,
+      lineDecorationsWidth: 0,
+      lineNumbers: 'on',
+      lineNumbersMinChars: 3,
+      renderWhitespace: 'none',
+      smoothScrolling: false,
+      find: {
+        addExtraSpaceOnTop: false,
+        autoFindInSelection: 'never'
       }
     });
+    
+    // Minimal resize handler with very long debounce
+    let resizeTimeout;
+    const handleResize = () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (this.editor) this.editor.layout();
+      }, 500); // Very long debounce
+    };
+    
+    // Only handle window resize events
+    window.addEventListener('resize', handleResize);
+    this.resizeHandler = handleResize;
+    
+    // Initial layout
+    setTimeout(() => {
+      if (this.editor) this.editor.layout();
+    }, 100);
   }
   
   // Update file stats display
@@ -432,6 +393,9 @@ export default class extends Controller {
     // Record time for current file if needed
     if (this.currentFileId) {
       this.recordTimeSpent();
+      
+      // Store the last viewed file ID before resetting
+      this.lastViewedFileId = this.currentFileId;
       this.currentFileId = null;
     }
     
@@ -493,6 +457,13 @@ export default class extends Controller {
           if (data && data.file_view && this.hasFileStatsTarget) {
             this.updateFileStats(data.file_view);
             console.log(`Time stats updated. New total: ${data.file_view.total_time_spent}s`);
+            
+            // Dispatch a custom event to notify other controllers that a file view was recorded
+            const event = new CustomEvent('file-view-recorded', { 
+              bubbles: true, 
+              detail: { fileId: this.currentFileId } 
+            });
+            this.element.dispatchEvent(event);
           }
         })
         .catch(err => {
@@ -579,5 +550,43 @@ export default class extends Controller {
     };
     
     return languageMap[normalizedLang] || 'lang-default';
+  }
+  
+  // Toggle key file status
+  async toggleKeyFile(event) {
+    const button = event.currentTarget;
+    const fileId = button.getAttribute('data-file-id');
+    const isKeyFile = button.getAttribute('data-is-key-file') === 'true';
+    
+    try {
+      const response = await fetch(`/repository_files/${fileId}/toggle_key_file`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ is_key_file: !isKeyFile })
+      });
+      
+      if (!response.ok) throw new Error('Failed to update key file status');
+      
+      const data = await response.json();
+      
+      // Update button state
+      button.setAttribute('data-is-key-file', data.is_key_file);
+      const toggleText = button.querySelector('.toggle-text');
+      
+      if (data.is_key_file) {
+        button.classList.add('active');
+        toggleText.textContent = 'Unmark as Key File';
+      } else {
+        button.classList.remove('active');
+        toggleText.textContent = 'Mark as Key File';
+      }
+      
+    } catch (error) {
+      console.error('Error updating key file status:', error);
+      alert('Failed to update key file status');
+    }
   }
 } 

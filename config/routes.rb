@@ -12,12 +12,14 @@ Rails.application.routes.draw do
     resources :repository_files, only: [:index], controller: 'repositories/repository_files'
     post :track_time, on: :member
     post :sync, on: :member
+    get :progress, on: :member
   end
   
   # Repository file routes
   resources :repository_files, only: [:show] do
     post :track_time, on: :member
     get :content, on: :member
+    post :toggle_key_file, on: :member
   end
   
   # Define the root path route ("/")

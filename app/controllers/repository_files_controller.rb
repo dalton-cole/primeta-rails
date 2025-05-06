@@ -26,6 +26,7 @@ class RepositoryFilesController < ApplicationController
       path: @repository_file.path,
       language: language,
       content: content,
+      is_key_file: @repository_file.is_key_file,
       file_view: {
         view_count: @file_view.view_count,
         total_time_spent: @file_view.total_time_spent,
@@ -76,6 +77,39 @@ class RepositoryFilesController < ApplicationController
       return head :internal_server_error
     end
     
+    # Broadcast progress update via Turbo Streams
+    if success
+      repository = @repository_file.repository
+      repository_files = repository.repository_files.includes(:file_views)
+      key_files = repository.repository_files.where(is_key_file: true)
+      viewed_file_ids = current_user.file_views.where(repository_file_id: repository_files.pluck(:id)).pluck(:repository_file_id).to_set
+      
+      # Calculate progress metrics
+      total_files_count = repository_files.count
+      viewed_files_count = viewed_file_ids.count
+      files_progress_percentage = total_files_count > 0 ? ((viewed_files_count.to_f / total_files_count) * 100).round(1) : 0
+      
+      key_files_count = key_files.count
+      viewed_key_files_count = key_files.count { |file| viewed_file_ids.include?(file.id) }
+      key_files_progress_percentage = key_files_count > 0 ? ((viewed_key_files_count.to_f / key_files_count) * 100).round(1) : 0
+      
+      # Broadcast the progress update
+      Turbo::StreamsChannel.broadcast_replace_to(
+        "repository_#{repository.id}_progress",
+        target: "repository_progress_#{repository.id}",
+        partial: "repositories/progress",
+        locals: {
+          repository: repository,
+          total_files_count: total_files_count,
+          viewed_files_count: viewed_files_count,
+          files_progress_percentage: files_progress_percentage,
+          key_files_count: key_files_count,
+          viewed_key_files_count: viewed_key_files_count,
+          key_files_progress_percentage: key_files_progress_percentage
+        }
+      )
+    end
+    
     # Return updated stats as JSON
     render json: {
       status: 'success',
@@ -86,6 +120,16 @@ class RepositoryFilesController < ApplicationController
         last_viewed_at: file_view.last_viewed_at&.strftime("%B %d, %Y at %H:%M") || "Just now"
       }
     }
+  end
+  
+  def toggle_key_file
+    # Only allow admins to toggle key file status
+    if current_user.admin?
+      @repository_file.update(is_key_file: params[:is_key_file])
+      render json: { success: true, is_key_file: @repository_file.is_key_file }
+    else
+      render json: { success: false, error: 'Unauthorized' }, status: :unauthorized
+    end
   end
   
   private
@@ -115,5 +159,36 @@ class RepositoryFilesController < ApplicationController
     
     # Update file view
     @file_view.record_view(time_spent)
+    
+    # Broadcast progress update via Turbo Streams after the view is recorded
+    repository = @repository_file.repository
+    repository_files = repository.repository_files.includes(:file_views)
+    key_files = repository.repository_files.where(is_key_file: true)
+    viewed_file_ids = current_user.file_views.where(repository_file_id: repository_files.pluck(:id)).pluck(:repository_file_id).to_set
+    
+    # Calculate progress metrics
+    total_files_count = repository_files.count
+    viewed_files_count = viewed_file_ids.count
+    files_progress_percentage = total_files_count > 0 ? ((viewed_files_count.to_f / total_files_count) * 100).round(1) : 0
+    
+    key_files_count = key_files.count
+    viewed_key_files_count = key_files.count { |file| viewed_file_ids.include?(file.id) }
+    key_files_progress_percentage = key_files_count > 0 ? ((viewed_key_files_count.to_f / key_files_count) * 100).round(1) : 0
+    
+    # Broadcast the progress update
+    Turbo::StreamsChannel.broadcast_replace_to(
+      "repository_#{repository.id}_progress",
+      target: "repository_progress_#{repository.id}",
+      partial: "repositories/progress",
+      locals: {
+        repository: repository,
+        total_files_count: total_files_count,
+        viewed_files_count: viewed_files_count,
+        files_progress_percentage: files_progress_percentage,
+        key_files_count: key_files_count,
+        viewed_key_files_count: viewed_key_files_count,
+        key_files_progress_percentage: key_files_progress_percentage
+      }
+    )
   end
 end

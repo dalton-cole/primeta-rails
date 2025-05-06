@@ -1,6 +1,6 @@
 class RepositoriesController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_repository, only: [:show, :track_time, :sync]
+  before_action :set_repository, only: [:show, :track_time, :sync, :progress]
   before_action :require_admin, only: [:new, :create, :sync]
 
   def index
@@ -13,8 +13,20 @@ class RepositoriesController < ApplicationController
     # Load repository files with their file views
     @repository_files = @repository.repository_files.includes(:file_views)
     
+    # Get key files for the repository
+    @key_files = @repository.repository_files.where(is_key_file: true).order(:path)
+    
     # Create a hash of file IDs that current user has viewed
     @viewed_file_ids = current_user.file_views.where(repository_file_id: @repository_files.pluck(:id)).pluck(:repository_file_id).to_set
+    
+    # Calculate progress metrics
+    @total_files_count = @repository_files.count
+    @viewed_files_count = @viewed_file_ids.count
+    @files_progress_percentage = @total_files_count > 0 ? ((@viewed_files_count.to_f / @total_files_count) * 100).round(1) : 0
+    
+    @key_files_count = @key_files.count
+    @viewed_key_files_count = @key_files.count { |file| @viewed_file_ids.include?(file.id) }
+    @key_files_progress_percentage = @key_files_count > 0 ? ((@viewed_key_files_count.to_f / @key_files_count) * 100).round(1) : 0
     
     @directory_structure = build_directory_structure(@repository_files)
   end
@@ -55,6 +67,36 @@ class RepositoriesController < ApplicationController
     head :no_content
   end
 
+  # Return progress data as JSON for real-time updates
+  def progress
+    # Get repository files with their file views
+    repository_files = @repository.repository_files.includes(:file_views)
+    
+    # Get key files for the repository
+    key_files = @repository.repository_files.where(is_key_file: true).order(:path)
+    
+    # Create a hash of file IDs that current user has viewed
+    viewed_file_ids = current_user.file_views.where(repository_file_id: repository_files.pluck(:id)).pluck(:repository_file_id).to_set
+    
+    # Calculate progress metrics
+    total_files_count = repository_files.count
+    viewed_files_count = viewed_file_ids.count
+    files_progress_percentage = total_files_count > 0 ? ((viewed_files_count.to_f / total_files_count) * 100).round(1) : 0
+    
+    key_files_count = key_files.count
+    viewed_key_files_count = key_files.count { |file| viewed_file_ids.include?(file.id) }
+    key_files_progress_percentage = key_files_count > 0 ? ((viewed_key_files_count.to_f / key_files_count) * 100).round(1) : 0
+    
+    render json: {
+      total_files_count: total_files_count,
+      viewed_files_count: viewed_files_count,
+      files_progress_percentage: files_progress_percentage,
+      key_files_count: key_files_count,
+      viewed_key_files_count: viewed_key_files_count,
+      key_files_progress_percentage: key_files_progress_percentage
+    }
+  end
+
   private
   
   def set_repository
@@ -87,7 +129,7 @@ class RepositoriesController < ApplicationController
       
       # Add the file to the current directory level
       file_name = path_parts.last
-      current_level[file_name] = { file_id: file.id }
+      current_level[file_name] = { file_id: file.id, is_key_file: file.is_key_file }
     end
     
     structure

@@ -19,14 +19,21 @@
     <%# This is a file %>
     <% file_id = content[:file_id] %>
     <% viewed = @viewed_file_ids&.include?(file_id) %>
+    <% is_key = content[:is_key_file] %>
     <div class="file-item">
-      <%= link_to name, "#", 
+      <%= link_to "#", 
           class: viewed ? "viewed-file" : "",
+          title: is_key ? "Key file (marked as particularly important)" : nil,
           data: { 
             path: parent_path.present? ? "#{parent_path}/#{name}" : name,
             file_id: file_id,
             action: "click->inline-editor#showFile"
-          } %>
+          } do %>
+        <% if is_key %>
+          <span class="key-file-star" title="Only admins can mark key files">★</span>
+        <% end %>
+        <%= name %>
+      <% end %>
     </div>
   <% end %>
 <% end %> 

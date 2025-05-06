@@ -1,0 +1,25 @@
+<div class="progress-section" id="repository_progress_<%= repository.id %>" data-controller="progress-tracker" data-progress-tracker-repository-id-value="<%= repository.id %>">
+  <div class="progress-metric">
+    <div class="progress-label">
+      <span>Files Viewed</span>
+      <span class="progress-value" data-progress-tracker-target="filesValue"><%= viewed_files_count %> / <%= total_files_count %></span>
+    </div>
+    <div class="progress-bar-container">
+      <div class="progress-bar" data-progress-tracker-target="filesProgress" style="width: <%= files_progress_percentage %>%"></div>
+    </div>
+    <div class="progress-percentage" data-progress-tracker-target="filesPercentage"><%= files_progress_percentage %>%</div>
+  </div>
+  
+  <% if key_files_count > 0 %>
+    <div class="progress-metric">
+      <div class="progress-label">
+        <span>Key Files Viewed</span>
+        <span class="progress-value" data-progress-tracker-target="keyFilesValue"><%= viewed_key_files_count %> / <%= key_files_count %></span>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar progress-bar-key" data-progress-tracker-target="keyFilesProgress" style="width: <%= key_files_progress_percentage %>%"></div>
+      </div>
+      <div class="progress-percentage" data-progress-tracker-target="keyFilesPercentage"><%= key_files_progress_percentage %>%</div>
+    </div>
+  <% end %>
+</div> 

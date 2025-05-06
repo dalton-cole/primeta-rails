@@ -28,7 +28,7 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body>
+  <body <%= "data-user-admin=true" if user_signed_in? && current_user.admin? %>>
     <header class="main-header">
       <div class="container">
         <div class="logo">
