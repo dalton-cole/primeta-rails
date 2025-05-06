@@ -278,6 +278,10 @@ export default class extends Controller {
     // Otherwise initialize a new editor
     // Load Monaco editor from CDN if needed
     if (window.monaco) {
+      // Ensure theme is applied before creating editor
+      if (typeof window.applyPrimetaTheme === 'function') {
+        window.applyPrimetaTheme();
+      }
       this.createEditor(content, language);
     } else {
       // Add Monaco loader script
@@ -291,6 +295,10 @@ export default class extends Controller {
         
         // Load the basic editor first
         window.require(['vs/editor/editor.main'], () => {
+          // Apply theme after Monaco loads but before editor creation
+          if (typeof window.applyPrimetaTheme === 'function') {
+            window.applyPrimetaTheme();
+          }
           this.createEditor(content, language);
         });
       };
@@ -306,6 +314,11 @@ export default class extends Controller {
     }
     
     const monaco = window.monaco;
+    
+    // Ensure theme is applied right before creating the editor
+    if (typeof window.applyPrimetaTheme === 'function') {
+      window.applyPrimetaTheme();
+    }
     
     // Simple language mapping
     const languageMap = {
@@ -330,28 +343,28 @@ export default class extends Controller {
     editorContainer.style.width = '100%';
     editorContainer.style.overflow = 'hidden';
     
-    // Create minimal editor
+    // Create minimal editor with improved settings
     this.editor = monaco.editor.create(editorContainer, {
       value: content,
       language: normalizedLanguage,
-      theme: 'vs-dark',
+      theme: 'primeta-dark',
       readOnly: true,
-      automaticLayout: false,
+      automaticLayout: true, // Enable auto layout
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
-      renderLineHighlight: 'none',
+      renderLineHighlight: 'all', // Show current line highlight
       overviewRulerBorder: false,
       overviewRulerLanes: 0,
       hideCursorInOverviewRuler: true,
-      renderIndentGuides: false,
+      renderIndentGuides: true, // Show indent guides
       contextmenu: false,
-      folding: false,
+      folding: true, // Enable code folding
       glyphMargin: false,
       lineDecorationsWidth: 0,
       lineNumbers: 'on',
       lineNumbersMinChars: 3,
       renderWhitespace: 'none',
-      smoothScrolling: false,
+      smoothScrolling: true, // Enable smooth scrolling
       find: {
         addExtraSpaceOnTop: false,
         autoFindInSelection: 'never'

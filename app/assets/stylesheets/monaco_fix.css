@@ -1,0 +1,47 @@
+/* Monaco Editor Scrollbar Fix */
+
+/* Target Monaco editor scrollbars specifically to override any red colors */
+.monaco-editor .scrollbar .slider,
+.monaco-editor .monaco-scrollable-element > .scrollbar > .slider {
+  background: rgba(41, 121, 255, 0.4) !important; /* Use primeta brand blue */
+}
+
+.monaco-editor .scrollbar .slider:hover,
+.monaco-editor .monaco-scrollable-element > .scrollbar > .slider:hover {
+  background: rgba(41, 121, 255, 0.6) !important; /* Brighter blue on hover */
+}
+
+.monaco-editor .scrollbar .slider.active,
+.monaco-editor .monaco-scrollable-element > .scrollbar > .slider.active {
+  background: rgba(41, 121, 255, 0.8) !important; /* Even brighter when active */
+}
+
+/* Also target standard scrollbars in monaco container */
+#monaco-container::-webkit-scrollbar,
+.monaco-editor ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+#monaco-container::-webkit-scrollbar-track,
+.monaco-editor ::-webkit-scrollbar-track {
+  background: var(--dark-bg-color, #0A0A23);
+}
+
+#monaco-container::-webkit-scrollbar-thumb,
+.monaco-editor ::-webkit-scrollbar-thumb {
+  background-color: rgba(41, 121, 255, 0.4);
+  border-radius: 6px;
+  border: 2px solid var(--dark-bg-color, #0A0A23);
+}
+
+#monaco-container::-webkit-scrollbar-thumb:hover,
+.monaco-editor ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(41, 121, 255, 0.6);
+}
+
+/* Firefox scrollbar styles */
+.monaco-editor {
+  scrollbar-color: rgba(41, 121, 255, 0.4) var(--dark-bg-color, #0A0A23);
+  scrollbar-width: thin;
+} 

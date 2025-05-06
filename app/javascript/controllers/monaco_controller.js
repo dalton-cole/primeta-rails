@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
-// Remove the direct import that's causing the error
+// Remove these imports that are causing the error
+// import { defineMonacoTheme } from "../monaco"
 // import * as monaco from "monaco-editor"
 
 // Connects to data-controller="monaco"
@@ -11,6 +12,12 @@ export default class extends Controller {
   }
   
   connect() {
+    // Track view time
+    this.startTime = new Date()
+    
+    // Handle navigation away from page to record time spent
+    window.addEventListener('beforeunload', this.recordTimeSpent.bind(this))
+    
     // Load Monaco editor from CDN
     if (window.monaco) {
       this.initializeEditor();
@@ -25,21 +32,24 @@ export default class extends Controller {
         });
         
         window.require(['vs/editor/editor.main'], () => {
+          // Ensure our theme is defined after Monaco loads but before editor creation
+          if (typeof window.applyPrimetaTheme === 'function') {
+            window.applyPrimetaTheme();
+          }
           this.initializeEditor();
         });
       };
       document.head.appendChild(script);
     }
-    
-    // Track view time
-    this.startTime = new Date()
-    
-    // Handle navigation away from page to record time spent
-    window.addEventListener('beforeunload', this.recordTimeSpent.bind(this))
   }
   
   initializeEditor() {
     if (!window.monaco) return;
+    
+    // Actively ensure theme is applied
+    if (typeof window.applyPrimetaTheme === 'function') {
+      window.applyPrimetaTheme();
+    }
     
     // Use viewport height units to fill the screen and full width
     this.element.style.height = '85vh'; // 85% of viewport height
@@ -51,24 +61,24 @@ export default class extends Controller {
     this.editor = window.monaco.editor.create(this.element, {
       value: this.contentValue || '',
       language: this.languageValue || 'plaintext',
-      theme: 'vs-dark',
+      theme: 'primeta-dark',
       readOnly: this.readOnlyValue || false,
-      automaticLayout: false,
+      automaticLayout: true, // Enable auto layout to better handle resizing
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
-      renderLineHighlight: 'none',
+      renderLineHighlight: 'all', // Show current line highlight
       overviewRulerBorder: false,
       overviewRulerLanes: 0,
       hideCursorInOverviewRuler: true,
-      renderIndentGuides: false,
+      renderIndentGuides: true, // Show indent guides for better readability
       contextmenu: false,
-      folding: false,
+      folding: true, // Enable code folding
       glyphMargin: false,
       lineDecorationsWidth: 0,
       lineNumbers: 'on',
       lineNumbersMinChars: 3,
       renderWhitespace: 'none',
-      smoothScrolling: false,
+      smoothScrolling: true, // Enable smooth scrolling
       find: {
         addExtraSpaceOnTop: false,
         autoFindInSelection: 'never'
