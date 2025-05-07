@@ -74,6 +74,15 @@ export default class extends Controller {
       this.currentFileId = fileId;
       this.currentFilePath = filePath;
       
+      // Dispatch a custom event for the AI assistant to respond to
+      document.dispatchEvent(new CustomEvent('monaco:file-selected', {
+        detail: {
+          fileId: fileId,
+          filePath: filePath,
+          repositoryId: this.repositoryIdValue
+        }
+      }));
+      
       // Remove highlight from previously selected file and add to current
       document.querySelectorAll('.file-item a.current-file').forEach(el => {
         el.classList.remove('current-file');

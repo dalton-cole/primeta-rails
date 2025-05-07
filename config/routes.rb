@@ -26,6 +26,12 @@ Rails.application.routes.draw do
     post :toggle_key_file, on: :member
   end
   
+  # API routes
+  namespace :api do
+    get '/file_context', to: 'file_context#show'
+    get '/test_gemini', to: 'file_context#test_gemini'
+  end
+  
   # Define the root path route ("/")
   root "home#index"
 

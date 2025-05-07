@@ -45,6 +45,7 @@
     max-width: 98vw; /* Nearly full viewport width */
     width: 98vw;
     margin: 0 auto;
+    position: relative;
   }
   
   .header {
@@ -123,3 +124,16 @@
     font-weight: 500;
   }
 </style>
+
+<script>
+  // Test function that can still be used from the JavaScript console if needed
+  function testAIAssistant() {
+    console.log("Direct test of AI Assistant");
+    const repoId = <%= @repository.id %>;
+    const filePath = "<%= @repository_file.path %>";
+    
+    const url = `/api/file_context?repository_id=${repoId}&file_path=${encodeURIComponent(filePath)}`;
+    console.log("Would send request to:", url);
+    console.log("Use the AI assistant button in the bottom right of the screen instead.");
+  }
+</script>
