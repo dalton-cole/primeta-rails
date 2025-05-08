@@ -15,6 +15,9 @@ class User < ApplicationRecord
   # Validations
   validates :role, inclusion: { in: ROLES }, allow_nil: true
   
+  # Protect GitHub username and email from updates once set
+  attr_readonly :github_username, :email
+  
   before_validation :set_default_role, on: :create
   
   # OmniAuth handler for GitHub

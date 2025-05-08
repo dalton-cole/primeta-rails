@@ -1,7 +1,8 @@
 Rails.application.routes.draw do
   # Devise routes with OmniAuth callbacks
   devise_for :users, controllers: {
-    omniauth_callbacks: 'users/omniauth_callbacks'
+    omniauth_callbacks: 'users/omniauth_callbacks',
+    registrations: 'users/registrations'
   }
   
   # Home controller route

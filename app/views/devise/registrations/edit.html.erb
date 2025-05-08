@@ -1,0 +1,264 @@
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="mb-0"><i class="bi bi-person-gear"></i> Edit Profile</h2>
+        </div>
+        
+        <div class="card-body">
+          <%= form_for(resource, as: resource_name, url: registration_path(resource_name), html: { method: :put, class: "styled-form" }) do |f| %>
+            <%= render "devise/shared/error_messages", resource: resource %>
+
+            <div class="form-group mb-3">
+              <%= f.label :email, class: "form-label" %>
+              <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "form-control", readonly: true %>
+              <div class="form-text">
+                <i class="bi bi-info-circle"></i> Your email address cannot be changed. Please contact support if needed.
+              </div>
+            </div>
+            
+            <% if resource.respond_to?(:name) %>
+              <div class="form-group mb-3">
+                <%= f.label :name, class: "form-label" %>
+                <%= f.text_field :name, class: "form-control" %>
+              </div>
+            <% end %>
+            
+            <% if resource.respond_to?(:github_username) %>
+              <div class="form-group mb-3">
+                <%= f.label :github_username, "GitHub Username", class: "form-label" %>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-github"></i></span>
+                  <% if resource.github_username.present? %>
+                    <%= f.text_field :github_username, class: "form-control", readonly: true %>
+                    <div class="form-text">
+                      <i class="bi bi-info-circle"></i> Your GitHub account is connected. To change it, please contact support.
+                    </div>
+                  <% else %>
+                    <%= f.text_field :github_username, class: "form-control" %>
+                    <div class="form-text">Connect your GitHub account to display your avatar</div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+
+            <% if devise_mapping.confirmable? && resource.pending_reconfirmation? %>
+              <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle-fill"></i> Currently waiting confirmation for: <%= resource.unconfirmed_email %>
+              </div>
+            <% end %>
+
+            <div class="form-group mb-3">
+              <%= f.label :password, class: "form-label" %>
+              <%= f.password_field :password, autocomplete: "new-password", class: "form-control" %>
+              <div class="form-text">
+                <i class="bi bi-info-circle"></i> Leave blank if you don't want to change it
+                <% if @minimum_password_length %>
+                  <br><em><%= @minimum_password_length %> characters minimum</em>
+                <% end %>
+              </div>
+            </div>
+
+            <div class="form-group mb-3">
+              <%= f.label :password_confirmation, class: "form-label" %>
+              <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "form-control" %>
+            </div>
+
+            <div class="form-group mb-4">
+              <%= f.label :current_password, class: "form-label" %>
+              <%= f.password_field :current_password, autocomplete: "current-password", class: "form-control" %>
+              <div class="form-text">
+                <i class="bi bi-lock-fill"></i> We need your current password to confirm your changes
+              </div>
+            </div>
+
+            <div class="actions">
+              <%= f.submit "Update Profile", class: "btn btn-primary profile-edit-btn" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="card mt-4">
+        <div class="card-header bg-danger-subtle">
+          <h3 class="mb-0 text-danger"><i class="bi bi-exclamation-triangle"></i> Account Management</h3>
+        </div>
+        
+        <div class="card-body">
+          <h4>Delete Account</h4>
+          <p>Unhappy with the service? Your account and all associated data will be permanently deleted.</p>
+          
+          <%= button_to registration_path(resource_name), 
+              data: { 
+                confirm: "Are you sure? This action cannot be undone.", 
+                turbo_confirm: "Are you sure? This action cannot be undone." 
+              }, 
+              method: :delete, 
+              class: "btn btn-danger" do %>
+            <i class="bi bi-person-x-fill"></i> Delete my account
+          <% end %>
+        </div>
+      </div>
+
+      <div class="mt-4 text-center">
+        <%= link_to :back, class: "btn btn-outline-secondary" do %>
+          <i class="bi bi-arrow-left"></i> Back
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Profile Edit Page Styles */
+  .card {
+    background-color: var(--dark-bg-color);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    color: var(--text-light-color);
+  }
+  
+  .card-header {
+    background: linear-gradient(135deg, rgba(41, 121, 255, 0.1) 0%, rgba(41, 121, 255, 0.2) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.25rem 1.5rem;
+  }
+  
+  .card-header h2, .card-header h3 {
+    color: var(--text-light-color);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .card-body {
+    padding: 1.5rem;
+  }
+  
+  .form-label {
+    color: var(--text-light-color);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+  
+  .form-control {
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-light-color);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+  }
+  
+  .form-control:focus {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(41, 121, 255, 0.25);
+    color: white;
+  }
+  
+  .form-text {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+  }
+  
+  .input-group-text {
+    background-color: rgba(41, 121, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-light-color);
+  }
+  
+  .profile-edit-btn {
+    background: linear-gradient(135deg, rgba(41, 121, 255, 0.8) 0%, rgba(41, 121, 255, 0.9) 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  }
+  
+  .profile-edit-btn:hover {
+    background: linear-gradient(135deg, rgba(41, 121, 255, 0.9) 0%, rgba(41, 121, 255, 1) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  .btn-danger {
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.8) 0%, rgba(231, 76, 60, 0.9) 100%);
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-danger:hover {
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.9) 0%, rgba(231, 76, 60, 1) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  .bg-danger-subtle {
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.2) 100%);
+  }
+  
+  .text-danger {
+    color: rgba(231, 76, 60, 0.9) !important;
+  }
+  
+  .btn-outline-secondary {
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: var(--text-light-color);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-outline-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: white;
+    transform: translateY(-1px);
+  }
+  
+  .alert {
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.2) 100%);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    color: rgba(231, 76, 60, 0.9);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  
+  .alert-header {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+  }
+  
+  .error-list {
+    padding-left: 1.5rem;
+    color: rgba(231, 76, 60, 0.9);
+  }
+  
+  .alert-info {
+    background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(52, 152, 219, 0.2) 100%);
+    border: 1px solid rgba(52, 152, 219, 0.3);
+    color: rgba(52, 152, 219, 0.9);
+  }
+  
+  .form-control[readonly] {
+    background-color: rgba(41, 121, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: not-allowed;
+    opacity: 0.8;
+  }
+</style> 

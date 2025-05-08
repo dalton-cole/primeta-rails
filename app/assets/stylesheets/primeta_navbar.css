@@ -106,7 +106,8 @@
   z-index: 100;
 }
 
-.user-menu:hover .dropdown-menu {
+/* Add show class functionality and remove hover behavior */
+.dropdown-menu.show {
   display: block;
   animation: fadeIn 0.3s ease forwards;
 }

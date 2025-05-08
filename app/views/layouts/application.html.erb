@@ -46,10 +46,9 @@
         <nav class="main-nav">
           <% if user_signed_in? %>
             <%= link_to "Repositories", repositories_path, class: "nav-link #{controller_name == 'repositories' ? 'highlighted' : ''}" %>
-            <%= link_to "My Progress", my_profile_path, class: "nav-link" %>
-            <div class="user-menu">
-              <span class="user-name"><%= current_user.name || current_user.email %></span>
-              <div class="dropdown-menu">
+            <div class="user-menu" data-controller="dropdown">
+              <span class="user-name" data-action="click->dropdown#toggle"><%= current_user.name || current_user.email %></span>
+              <div class="dropdown-menu" data-dropdown-target="menu">
                 <%= link_to "Profile", my_profile_path %>
                 <%= link_to "Settings", edit_user_registration_path %>
                 <%= button_to "Sign Out", destroy_user_session_path, method: :delete %>
@@ -87,11 +86,7 @@
          <% end %>>
       <button class="ai-assistant-toggle" data-action="click->ai-assistant#toggle" title="Toggle AI Assistant">
         <div class="ai-toggle-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" class="brain-circle"></circle>
-            <path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4M12 16c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" class="brain-detail"></path>
-            <path d="M15 9c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2" class="brain-wave"></path>
-          </svg>
+          <img src="/images/icon.svg" width="24" height="24" alt="Primeta AI" />
         </div>
         <span class="toggle-label">Primeta AI</span>
       </button>
@@ -99,10 +94,7 @@
         <div class="ai-assistant-header">
           <div class="ai-title">
             <div class="ai-icon-small">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10" class="brain-circle"></circle>
-                <path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4M12 16c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z" class="brain-detail"></path>
-              </svg>
+              <img src="/images/icon.svg" width="18" height="18" alt="Primeta AI" />
             </div>
             <span>Primeta AI</span>
           </div>

@@ -16,7 +16,7 @@
             <h3 class="profile-name"><%= @user.name.presence || @user.email %></h3>
             <% if @user.github_username.present? %>
               <p class="text-muted">
-                <a href="https://github.com/<%= @user.github_username %>" target="_blank" rel="noopener" class="github-link">
+                <a href="https://github.com/<%= @user.github_username %>" target="_blank" rel="noopener" class="github-profile-link">
                   <i class="bi bi-github"></i> @<%= @user.github_username %>
                 </a>
               </p>
@@ -25,7 +25,7 @@
           
           <% if current_user == @user %>
             <div class="d-grid">
-              <%= link_to edit_user_registration_path, class: "btn btn-outline-primary btn-block" do %>
+              <%= link_to edit_user_registration_path, class: "btn btn-outline-primary profile-edit-btn" do %>
                 <i class="bi bi-pencil-square"></i> Edit Profile
               <% end %>
             </div>
@@ -55,21 +55,7 @@
             <li class="list-group-item d-flex justify-content-between align-items-center">
               <span><i class="bi bi-clock-history"></i> Total Time Spent</span>
               <span class="badge bg-primary rounded-pill">
-                <%= 
-                  total_seconds = @user.file_views.sum(:total_time_spent).to_i
-                  
-                  if total_seconds > 3600
-                    hours = total_seconds / 3600
-                    minutes = (total_seconds % 3600) / 60
-                    "#{hours}h #{minutes}m"
-                  elsif total_seconds > 60
-                    minutes = total_seconds / 60
-                    seconds = total_seconds % 60
-                    "#{minutes}m #{seconds}s"
-                  else
-                    "#{total_seconds}s"
-                  end
-                %>
+                <%= format_time_spent(@user.file_views.sum(:total_time_spent)) %>
               </span>
             </li>
           </ul>
@@ -86,9 +72,9 @@
         <div class="card-body">
           <% if @repositories.empty? %>
             <div class="alert alert-info">
-              <i class="bi bi-info-circle"></i> No repositories viewed yet.
+              <i class="bi bi-info-circle"></i> No repositories explored yet.
               <%= link_to repositories_path, class: "alert-link" do %>
-                Explore Repositories
+                Start Exploring Repositories
               <% end %>
             </div>
           <% else %>
@@ -145,20 +131,7 @@
                     <div>
                       <span class="badge bg-info me-2">
                         <i class="bi bi-clock"></i> 
-                        <%= 
-                          seconds = stats[:total_time_spent].to_i
-                          if seconds > 3600
-                            hours = seconds / 3600
-                            minutes = (seconds % 3600) / 60
-                            "#{hours}h #{minutes}m"
-                          elsif seconds > 60
-                            minutes = seconds / 60
-                            secs = seconds % 60
-                            "#{minutes}m #{secs}s"
-                          else
-                            "#{seconds}s"
-                          end
-                        %>
+                        <%= stats[:formatted_time_spent] %>
                       </span>
                       <span class="badge bg-secondary me-2">
                         <i class="bi bi-eye"></i> 
@@ -245,17 +218,55 @@
     color: var(--text-light-color);
   }
   
-  .github-link {
-    color: var(--primary-color);
-    text-decoration: none;
-  }
-  
-  .github-link:hover {
-    color: rgba(52, 152, 219, 0.8);
-    text-decoration: underline;
-  }
-  
   .text-muted {
     color: rgba(255, 255, 255, 0.6) !important;
+  }
+  
+  /* GitHub profile link styles */
+  .github-profile-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    padding: 0.3rem 0.7rem;
+    border-radius: 20px;
+    background-color: rgba(41, 121, 255, 0.1);
+    transition: all 0.2s ease;
+  }
+  
+  .github-profile-link:hover {
+    background-color: rgba(41, 121, 255, 0.2);
+    color: #ffffff;
+    text-decoration: none;
+    transform: translateY(-1px);
+  }
+  
+  .github-profile-link i {
+    font-size: 1.1rem;
+  }
+  
+  /* Edit profile button styles */
+  .profile-edit-btn {
+    background: linear-gradient(135deg, rgba(41, 121, 255, 0.1) 0%, rgba(41, 121, 255, 0.2) 100%);
+    color: var(--primary-color);
+    border: 1px solid rgba(41, 121, 255, 0.3);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .profile-edit-btn:hover {
+    background: linear-gradient(135deg, rgba(41, 121, 255, 0.2) 0%, rgba(41, 121, 255, 0.3) 100%);
+    color: #ffffff;
+    border-color: rgba(41, 121, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .profile-edit-btn i {
+    margin-right: 0.4rem;
   }
 </style> 
