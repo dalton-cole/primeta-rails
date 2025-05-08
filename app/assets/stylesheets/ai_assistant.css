@@ -411,4 +411,60 @@
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Static Info Styling */
+.ai-static-info {
+  color: var(--text-color-primary);
+  padding: 15px;
+}
+
+.ai-static-info h3 {
+  font-size: 18px;
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: var(--ai-primary-color);
+  font-weight: 600;
+}
+
+.ai-static-info h4 {
+  font-size: 15px;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  color: var(--ai-secondary-color);
+  font-weight: 500;
+}
+
+.ai-static-info p {
+  margin-bottom: 15px;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.ai-static-info ul {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 15px;
+}
+
+.ai-static-info li {
+  margin-bottom: 8px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ai-static-info i {
+  color: var(--ai-secondary-color);
+  font-size: 16px;
+}
+
+.ai-static-info a {
+  color: var(--ai-link-color);
+  text-decoration: none;
+}
+
+.ai-static-info a:hover {
+  text-decoration: underline;
 } 

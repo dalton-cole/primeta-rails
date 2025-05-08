@@ -5,7 +5,8 @@ export default class extends Controller {
   static values = {
     repositoryId: Number,
     filePath: String,
-    currentRepository: Boolean
+    currentRepository: Boolean,
+    staticInfo: Boolean
   }
   
   connect() {
@@ -13,6 +14,7 @@ export default class extends Controller {
     console.log("🔍 Has repositoryId:", this.hasRepositoryIdValue, "Value:", this.repositoryIdValue);
     console.log("🔍 Has filePath:", this.hasFilePathValue, "Value:", this.filePathValue);
     console.log("🔍 Is current repository:", this.hasCurrentRepositoryValue);
+    console.log("🔍 Has static info:", this.hasStaticInfoValue);
     console.log("🔍 Has contextContent:", this.hasContextContentTarget);
     console.log("🔍 Has panel:", this.hasPanelTarget);
     console.log("🔍 Has content:", this.hasContentTarget);
@@ -23,6 +25,15 @@ export default class extends Controller {
     
     // Don't try to load context if we don't have both repository ID and file path
     this.contextLoaded = false
+    
+    // For static info pages, we already have the content loaded
+    if (this.hasStaticInfoValue && this.staticInfoValue) {
+      this.contextLoaded = true
+      // Hide loading indicator immediately for static content
+      if (this.hasLoadingIndicatorTarget) {
+        this.hideLoadingIndicator();
+      }
+    }
     
     // Listen for page changes (for Turbo navigation)
     document.addEventListener('turbo:load', this.checkForFileData.bind(this))
@@ -118,6 +129,15 @@ export default class extends Controller {
   // File context methods
   loadContextIfNeeded() {
     console.log("🔍 AI Assistant: loadContextIfNeeded called");
+    
+    // For static information pages, just hide the loading indicator
+    if (this.hasStaticInfoValue && this.staticInfoValue) {
+      if (this.hasLoadingIndicatorTarget) {
+        this.hideLoadingIndicator();
+      }
+      return;
+    }
+    
     if (this.hasRepositoryIdValue && this.hasFilePathValue && this.hasContextContentTarget) {
       console.log("🔍 AI Assistant - Repository ID:", this.repositoryIdValue);
       console.log("🔍 AI Assistant - File Path:", this.filePathValue);
@@ -449,40 +469,52 @@ export default class extends Controller {
   
   // Tab switching functionality
   switchTab(event) {
-    const tabName = event.currentTarget.dataset.tab;
-    console.log("🔍 AI Assistant - Switching to tab:", tabName);
+    // Get the tab that was clicked
+    const clickedTab = event.currentTarget;
+    const tabName = clickedTab.dataset.tab;
     
-    // Update tab styling
-    document.querySelectorAll('.ai-assistant-tab').forEach(tab => {
-      tab.classList.remove('active');
-    });
-    event.currentTarget.classList.add('active');
+    console.log("🔍 AI Assistant: Switching to tab:", tabName);
     
-    // Show the associated content
-    document.querySelectorAll('.ai-tab-content').forEach(content => {
-      content.classList.remove('active');
-      content.classList.add('hidden');
-    });
-    
-    const activeContent = document.querySelector(`.ai-tab-content[data-tab="${tabName}"]`);
-    activeContent.classList.remove('hidden');
-    activeContent.classList.add('active');
-    
-    // Load content if needed
-    if (tabName === 'context') {
-      if (!this.contextLoaded) {
-        this.fetchFileContext();
+    // Update tab classes
+    const tabs = document.querySelectorAll('.ai-assistant-tab');
+    tabs.forEach(tab => {
+      if (tab === clickedTab) {
+        tab.classList.add('active');
+      } else {
+        tab.classList.remove('active');
       }
+    });
+    
+    // Update content visibility
+    const contents = document.querySelectorAll('.ai-tab-content');
+    contents.forEach(content => {
+      if (content.dataset.tab === tabName) {
+        content.classList.add('active');
+        content.classList.remove('hidden');
+      } else {
+        content.classList.remove('active');
+        content.classList.add('hidden');
+      }
+    });
+    
+    // If we're on a page with static info, we don't need to load any dynamic content
+    if (this.hasStaticInfoValue && this.staticInfoValue) {
+      return;
+    }
+    
+    // Load content for the selected tab if needed
+    if (tabName === 'context') {
+      this.loadContextIfNeeded();
     } else if (tabName === 'challenges') {
-      if (!this.challengesLoaded) {
+      if (!this.challengesLoaded && this.hasRepositoryIdValue && this.hasFilePathValue) {
         this.fetchLearningChallenges();
       }
     } else if (tabName === 'patterns') {
-      if (!this.patternsLoaded) {
+      if (!this.patternsLoaded && this.hasRepositoryIdValue && this.hasFilePathValue) {
         this.fetchRelatedPatterns();
       }
     } else if (tabName === 'visualizations') {
-      if (!this.visualizationsLoaded) {
+      if (!this.visualizationsLoaded && this.hasRepositoryIdValue && this.hasFilePathValue) {
         this.fetchVisualizations();
       }
     }
