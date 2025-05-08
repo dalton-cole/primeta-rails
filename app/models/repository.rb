@@ -1,6 +1,7 @@
 class Repository < ApplicationRecord
   # Associations
   has_many :repository_files, dependent: :destroy
+  has_many :key_concepts, dependent: :destroy
   
   # Constants
   STATUS_OPTIONS = %w[active syncing error].freeze
@@ -24,6 +25,114 @@ class Repository < ApplicationRecord
   
   def file_count
     repository_files.count
+  end
+  
+  def explorer_count
+    # Find all users who have viewed any file in this repository
+    User.joins(file_views: :repository_file)
+        .where(repository_files: { repository_id: id })
+        .distinct
+        .count
+  end
+  
+  # Repository statistics
+  def language_stats
+    stats = repository_files
+      .where.not(language: [nil, '', 'plaintext'])
+      .group(:language)
+      .count
+      .sort_by { |_, count| -count }
+      .take(3)
+      
+    # Return empty array if no language stats found
+    return [] if stats.empty?
+    
+    total_files = stats.sum { |_, count| count }
+    
+    stats.map do |language, count|
+      {
+        language: language,
+        count: count,
+        percentage: ((count.to_f / total_files) * 100).round
+      }
+    end
+  end
+  
+  def primary_language
+    languages = language_stats
+    languages.first[:language] if languages.any?
+  end
+  
+  def total_lines_of_code
+    # Count lines in content for each file
+    repository_files.sum do |file|
+      file.content.to_s.lines.count
+    end
+  end
+  
+  def average_file_size
+    return 0 if repository_files.empty?
+    repository_files.average(:size).to_i
+  end
+  
+  def quick_stats
+    {
+      total_files: file_count,
+      total_lines: total_lines_of_code,
+      explorers: explorer_count,
+      languages: language_stats
+    }
+  end
+  
+  # Commit Hash Methods
+  def short_commit_hash
+    current_commit_hash.present? ? current_commit_hash[0..6] : nil
+  end
+  
+  def commit_hash_url
+    return nil unless github_url && current_commit_hash
+    "#{github_url}/commit/#{current_commit_hash}"
+  end
+  
+  # GitHub related methods
+  def github_repo?
+    git_url.present? && git_url.include?('github.com')
+  end
+  
+  def github_owner_and_repo
+    return nil unless github_repo?
+    
+    # Extract owner/repo from different GitHub URL formats
+    # https://github.com/owner/repo.git or git@github.com:owner/repo.git
+    if git_url.include?('github.com/')
+      path = git_url.split('github.com/').last
+    elsif git_url.include?('github.com:')
+      path = git_url.split('github.com:').last
+    else
+      return nil
+    end
+    
+    # Remove .git suffix and any query parameters
+    path = path.gsub(/\.git$/, '').split('?').first
+    owner, repo = path.split('/')
+    
+    return nil unless owner.present? && repo.present?
+    { owner: owner, repo: repo }
+  end
+  
+  def github_url
+    info = github_owner_and_repo
+    return nil unless info
+    
+    "https://github.com/#{info[:owner]}/#{info[:repo]}"
+  end
+  
+  def github_avatar_url
+    info = github_owner_and_repo
+    return nil unless info
+    
+    # GitHub organization/user avatar URL
+    "https://github.com/#{info[:owner]}.png?size=40"
   end
   
   private

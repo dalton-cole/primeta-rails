@@ -21,12 +21,15 @@ class RepositoryFilesController < ApplicationController
     language = @repository_file.language || 'plaintext'
     content = @repository_file.content || ''
     
+    # Check if this file is mentioned in any key concepts
+    is_concept_key_file = concept_file?(@repository_file)
+    
     render json: {
       id: @repository_file.id,
       path: @repository_file.path,
       language: language,
       content: content,
-      is_key_file: @repository_file.is_key_file,
+      is_concept_key_file: is_concept_key_file,
       file_view: {
         view_count: @file_view.view_count,
         total_time_spent: @file_view.total_time_spent,
@@ -81,7 +84,15 @@ class RepositoryFilesController < ApplicationController
     if success
       repository = @repository_file.repository
       repository_files = repository.repository_files.includes(:file_views)
-      key_files = repository.repository_files.where(is_key_file: true)
+      
+      # Get key files from concepts
+      key_concepts = repository.key_concepts
+      key_file_paths = []
+      key_concepts.each do |concept|
+        key_file_paths.concat(concept.key_files) if concept.key_files.present?
+      end
+      key_files = repository.repository_files.where(path: key_file_paths.uniq)
+      
       viewed_file_ids = current_user.file_views.where(repository_file_id: repository_files.pluck(:id)).pluck(:repository_file_id).to_set
       
       # Calculate progress metrics
@@ -122,16 +133,6 @@ class RepositoryFilesController < ApplicationController
     }
   end
   
-  def toggle_key_file
-    # Only allow admins to toggle key file status
-    if current_user.admin?
-      @repository_file.update(is_key_file: params[:is_key_file])
-      render json: { success: true, is_key_file: @repository_file.is_key_file }
-    else
-      render json: { success: false, error: 'Unauthorized' }, status: :unauthorized
-    end
-  end
-  
   private
   
   def set_repository_file
@@ -142,6 +143,16 @@ class RepositoryFilesController < ApplicationController
   def set_repository_file_for_tracking
     @repository_file = RepositoryFile.find(params[:repository_file_id] || params[:id])
     @repository = @repository_file.repository
+  end
+  
+  # Check if the file is mentioned in any key concepts
+  def concept_file?(file)
+    key_concepts = file.repository.key_concepts
+    key_file_paths = []
+    key_concepts.each do |concept|
+      key_file_paths.concat(concept.key_files) if concept.key_files.present?
+    end
+    key_file_paths.uniq.include?(file.path)
   end
   
   def record_file_view
@@ -163,7 +174,15 @@ class RepositoryFilesController < ApplicationController
     # Broadcast progress update via Turbo Streams after the view is recorded
     repository = @repository_file.repository
     repository_files = repository.repository_files.includes(:file_views)
-    key_files = repository.repository_files.where(is_key_file: true)
+    
+    # Get key files from concepts
+    key_concepts = repository.key_concepts
+    key_file_paths = []
+    key_concepts.each do |concept|
+      key_file_paths.concat(concept.key_files) if concept.key_files.present?
+    end
+    key_files = repository.repository_files.where(path: key_file_paths.uniq)
+    
     viewed_file_ids = current_user.file_views.where(repository_file_id: repository_files.pluck(:id)).pluck(:repository_file_id).to_set
     
     # Calculate progress metrics

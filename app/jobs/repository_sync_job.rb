@@ -22,11 +22,18 @@ class RepositorySyncJob < ApplicationJob
         git_clone(repository.clone_url, repo_dir)
       end
       
+      # Get the current commit hash
+      current_commit_hash = get_current_commit_hash(repo_dir)
+      
       # Process and store all files
       process_repository_files(repository, repo_dir)
       
-      # Update repository status
-      repository.update(status: 'active', last_synced_at: Time.current)
+      # Update repository status and commit hash
+      repository.update(
+        status: 'active', 
+        last_synced_at: Time.current,
+        current_commit_hash: current_commit_hash
+      )
       
     rescue => e
       Rails.logger.error("Error syncing repository #{repository.id}: #{e.message}")
@@ -45,6 +52,13 @@ class RepositorySyncJob < ApplicationJob
     Dir.chdir(repo_dir) do
       cmd = "git pull"
       system(cmd) || raise("Failed to pull repository: #{$?.exitstatus}")
+    end
+  end
+  
+  def get_current_commit_hash(repo_dir)
+    Dir.chdir(repo_dir) do
+      # Get the full commit hash of HEAD
+      `git rev-parse HEAD`.strip
     end
   end
   

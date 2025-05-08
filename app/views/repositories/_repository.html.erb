@@ -1,0 +1,59 @@
+<div class="repo-card">
+  <div class="repo-card-header">
+    <% if repository.github_repo? %>
+      <div class="github-info">
+        <img src="<%= repository.github_avatar_url %>" alt="GitHub Avatar" class="github-avatar">
+      </div>
+    <% end %>
+    <h3><%= repository.name %></h3>
+    <span class="status-indicator <%= repository.status %>"><%= repository.status.capitalize %></span>
+  </div>
+  
+  <% if repository.language_stats.any? %>
+    <div class="language-tags">
+      <% repository.language_stats.each do |stat| %>
+        <span class="language-tag <%= stat[:language].downcase %>">
+          <%= stat[:language] %> <small><%= stat[:percentage] %>%</small>
+        </span>
+      <% end %>
+    </div>
+  <% end %>
+  
+  <p class="description"><%= repository.description.present? ? truncate(repository.description, length: 100) : "No description provided" %></p>
+  
+  <div class="quick-stats">
+    <div class="stat-item">
+      <i class="fas fa-file-code"></i>
+      <span><%= repository.file_count %> files</span>
+    </div>
+    <div class="stat-item">
+      <i class="fas fa-users"></i>
+      <span><%= repository.explorer_count %> <%= repository.explorer_count == 1 ? 'explorer' : 'explorers' %></span>
+    </div>
+    <div class="stat-item">
+      <i class="fas fa-hdd"></i>
+      <span><%= number_to_human_size(repository.average_file_size * repository.file_count) %></span>
+    </div>
+    <% if repository.short_commit_hash %>
+      <div class="stat-item commit-hash">
+        <i class="fas fa-code-branch"></i>
+        <% if repository.commit_hash_url %>
+          <%= link_to repository.short_commit_hash, repository.commit_hash_url, target: "_blank", title: "View commit #{repository.current_commit_hash}" %>
+        <% else %>
+          <span><%= repository.short_commit_hash %></span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+  
+  <div class="repo-card-actions">
+    <%= link_to "Explore", user_signed_in? ? repository_path(repository) : new_user_session_path, 
+        class: "btn btn-outline",
+        data: { turbo_frame: "_top" } %>
+    <% if repository.github_url %>
+      <%= link_to repository.github_url, target: "_blank", class: "github-link", title: "View on GitHub" do %>
+        <i class="fab fa-github"></i>
+      <% end %>
+    <% end %>
+  </div>
+</div> 

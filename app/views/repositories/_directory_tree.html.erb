@@ -2,7 +2,7 @@
 <% tree.each do |name, content| %>
   <% if content.is_a?(Hash) && content[:file_id].nil? %>
     <%# This is a directory %>
-    <div class="dir-item" data-file-explorer-target="directory">
+    <div class="dir-item" data-file-explorer-target="directory" data-parent-path="<%= parent_path %>">
       <div class="dir-header" data-file-explorer-target="dirHeader">
         <span class="dir-toggle" data-file-explorer-target="toggle">+</span>
         <span class="dir-name"><%= name %></span>
@@ -32,7 +32,7 @@
         <% if is_key %>
           <span class="key-file-star" title="Only admins can mark key files">★</span>
         <% end %>
-        <%= name %>
+        <span class="file-name-text"><%= name %></span>
       <% end %>
     </div>
   <% end %>

@@ -1,0 +1,139 @@
+/* Primeta Navbar Styles
+ * Based on the Primeta.ai style guide
+ */
+
+/* Header Styles */
+.main-header {
+  background: linear-gradient(90deg, var(--deep-purple) 0%, var(--rich-purple) 100%);
+  padding: 1rem 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 100;
+}
+
+.main-header .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: white;
+  font-weight: 700;
+  font-family: 'Sora', sans-serif;
+  background: linear-gradient(120deg, var(--primary-light-purple), white);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.main-nav {
+  display: flex;
+  align-items: center;
+}
+
+.nav-link {
+  color: var(--text-secondary);
+  margin-left: 1.5rem;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  position: relative;
+}
+
+.nav-link:hover, .nav-link.active {
+  color: white;
+}
+
+/* Highlighted link for Repositories */
+.nav-link.highlighted {
+  background: linear-gradient(135deg, var(--primary-dark-purple) 0%, var(--accent-purple) 100%);
+  color: white;
+  box-shadow: 0 4px 8px rgba(67, 56, 202, 0.3);
+  border-radius: 50px;
+  padding: 0.5rem 1rem;
+}
+
+.nav-link.highlighted:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(67, 56, 202, 0.4);
+}
+
+/* User menu styling */
+.user-menu {
+  margin-left: 1.5rem;
+  position: relative;
+}
+
+.user-name {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.user-name::after {
+  content: "▼";
+  font-size: 0.6rem;
+  opacity: 0.8;
+  margin-left: 0.25rem;
+}
+
+.user-name:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy-medium) 100%);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 0.5rem 0;
+  min-width: 200px;
+  display: none;
+  z-index: 100;
+}
+
+.user-menu:hover .dropdown-menu {
+  display: block;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.dropdown-menu a, 
+.dropdown-menu button {
+  display: block;
+  padding: 0.75rem 1rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  text-align: left;
+  background: none;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: background-color 0.2s;
+}
+
+.dropdown-menu a:hover,
+.dropdown-menu button:hover {
+  background-color: rgba(99, 102, 241, 0.1);
+  color: var(--primary-light-purple);
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+} 

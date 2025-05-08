@@ -1,0 +1,466 @@
+/* Primeta Repositories Styles
+ * Based on the Primeta.ai style guide
+ */
+
+/* Base Variables from Style Guide */
+:root {
+  /* Primary Palette */
+  --primary-purple: #6366F1;
+  --primary-dark-purple: #4F46E5;
+  --primary-light-purple: #A78BFA;
+  --accent-purple: #7C3AED;
+  
+  /* Secondary Palette */
+  --navy-dark: #0F172A;
+  --navy-medium: #1E293B;
+  --deep-purple: #1E1E38;
+  --rich-purple: #2D1E69;
+  
+  /* Text Colors */
+  --text-primary: #F8F8F2;
+  --text-secondary: rgba(255, 255, 255, 0.9);
+  --text-tertiary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.6);
+  --text-accent: #A5B4FC;
+  --text-headers: #A78BFA;
+}
+
+.repositories-container {
+  color: var(--text-secondary);
+  padding: 3rem 0;
+  min-height: calc(100vh - 70px);
+  font-family: 'Inter', sans-serif;
+}
+
+/* Repository Grid */
+.repo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 2rem;
+}
+
+/* Repository Card */
+.repo-card {
+  background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy-medium) 100%);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.repo-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.3);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.repo-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.repo-card-header h3 {
+  flex: 1;
+  margin: 0;
+  color: var(--text-primary);
+  font-family: 'Sora', sans-serif;
+  font-weight: 600;
+  font-size: 1.25rem;
+  margin-right: 40px; /* Make room for status indicator */
+}
+
+/* Status Indicator */
+.status-indicator {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: 50px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.status-indicator.active {
+  background-color: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+}
+
+.status-indicator.syncing {
+  background-color: rgba(167, 139, 250, 0.2);
+  color: var(--primary-light-purple);
+}
+
+.status-indicator.error {
+  background-color: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+}
+
+/* GitHub Avatar */
+.github-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(99, 102, 241, 0.3);
+  object-fit: cover;
+  background-color: #ffffff;
+  flex-shrink: 0;
+}
+
+/* Language Tags */
+.language-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 1rem;
+}
+
+.language-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 50px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #fff;
+  background-color: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.language-tag small {
+  margin-left: 4px;
+  opacity: 0.8;
+}
+
+/* Language-specific colors */
+.language-tag.javascript {
+  background-color: #f1e05a;
+  color: #000;
+  border-color: #f1e05a;
+}
+
+.language-tag.typescript {
+  background-color: #3178c6;
+  border-color: #3178c6;
+}
+
+.language-tag.python {
+  background-color: #3572A5;
+  border-color: #3572A5;
+}
+
+.language-tag.ruby {
+  background-color: #CC342D;
+  border-color: #CC342D;
+}
+
+.language-tag.java {
+  background-color: #b07219;
+  border-color: #b07219;
+}
+
+.language-tag.go {
+  background-color: #00ADD8;
+  border-color: #00ADD8;
+}
+
+.language-tag.cpp, .language-tag.c\+\+ {
+  background-color: #f34b7d;
+  border-color: #f34b7d;
+}
+
+.language-tag.c {
+  background-color: #555555;
+  border-color: #555555;
+}
+
+.language-tag.php {
+  background-color: #4F5D95;
+  border-color: #4F5D95;
+}
+
+.language-tag.rust {
+  background-color: #DEA584;
+  border-color: #DEA584;
+}
+
+.language-tag.html {
+  background-color: #e34c26;
+  border-color: #e34c26;
+}
+
+.language-tag.css {
+  background-color: #563d7c;
+  border-color: #563d7c;
+}
+
+.language-tag.scss {
+  background-color: #c6538c;
+  border-color: #c6538c;
+}
+
+.language-tag.csharp {
+  background-color: #178600;
+  border-color: #178600;
+}
+
+.language-tag.shell {
+  background-color: #89e051;
+  color: #000;
+  border-color: #89e051;
+}
+
+/* Description */
+.description {
+  color: var(--text-tertiary);
+  margin-bottom: 1.5rem;
+  min-height: 3rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Quick Stats */
+.quick-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 1.5rem;
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stat-item i {
+  color: var(--primary-light-purple);
+}
+
+.stat-item.commit-hash i {
+  color: var(--primary-light-purple);
+}
+
+.stat-item.commit-hash a {
+  color: var(--text-accent);
+  font-family: 'Fira Code', monospace;
+  text-decoration: none;
+}
+
+.stat-item.commit-hash a:hover {
+  text-decoration: underline;
+}
+
+/* Card Actions */
+.repo-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+}
+
+/* Button Styles */
+.repo-card .btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.repo-card .btn-primary {
+  background: linear-gradient(135deg, var(--primary-dark-purple) 0%, var(--accent-purple) 100%);
+  color: white;
+  box-shadow: 0 8px 16px rgba(67, 56, 202, 0.3);
+}
+
+.repo-card .btn-primary:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 12px 20px rgba(67, 56, 202, 0.4);
+}
+
+.repo-card .btn-outline {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--text-accent);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.repo-card .btn-outline:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.5);
+  transform: translateY(-4px);
+}
+
+/* GitHub Link */
+.github-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-dark-purple) 0%, var(--accent-purple) 100%);
+  color: white;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-size: 1.2rem;
+  box-shadow: 0 8px 16px rgba(67, 56, 202, 0.2);
+}
+
+.github-link:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 12px 20px rgba(67, 56, 202, 0.3);
+}
+
+/* Login Banner */
+.login-banner {
+  background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy-medium) 100%);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 2rem;
+  margin-bottom: 3rem;
+}
+
+.banner-content {
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.banner-content h3 {
+  color: var(--text-headers);
+  margin-bottom: 1rem;
+  font-family: 'Sora', sans-serif;
+  font-size: 1.5rem;
+}
+
+.banner-content p {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+}
+
+.banner-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.banner-actions .btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+  border: none;
+  cursor: pointer;
+}
+
+.banner-actions .btn-primary {
+  background: linear-gradient(135deg, var(--primary-dark-purple) 0%, var(--accent-purple) 100%);
+  color: white;
+  box-shadow: 0 8px 16px rgba(67, 56, 202, 0.3);
+}
+
+.banner-actions .btn-primary:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 12px 20px rgba(67, 56, 202, 0.4);
+}
+
+.banner-actions .btn-outline {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--text-accent);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.banner-actions .btn-outline:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.5);
+  transform: translateY(-4px);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy-medium) 100%);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  color: var(--text-secondary);
+}
+
+.empty-state p {
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+}
+
+.empty-state .btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: linear-gradient(135deg, var(--primary-dark-purple) 0%, var(--accent-purple) 100%);
+  color: white;
+  box-shadow: 0 8px 16px rgba(67, 56, 202, 0.3);
+  border: none;
+  cursor: pointer;
+  display: inline-block;
+  text-decoration: none;
+}
+
+.empty-state .btn:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 12px 20px rgba(67, 56, 202, 0.4);
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+  .repositories-container {
+    padding: 2rem 1rem;
+  }
+  
+  .banner-actions {
+    flex-direction: column;
+  }
+  
+  .repo-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.repo-card {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* Staggered animations for repo cards */
+.repo-grid .repo-card:nth-child(1) { animation-delay: 0.1s; }
+.repo-grid .repo-card:nth-child(2) { animation-delay: 0.2s; }
+.repo-grid .repo-card:nth-child(3) { animation-delay: 0.3s; }
+.repo-grid .repo-card:nth-child(4) { animation-delay: 0.4s; }
+.repo-grid .repo-card:nth-child(5) { animation-delay: 0.5s; }
+.repo-grid .repo-card:nth-child(6) { animation-delay: 0.6s; } 

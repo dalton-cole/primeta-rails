@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_06_041500) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_08_153245) do
   create_table "file_views", force: :cascade do |t|
     t.integer "user_id", null: false
     t.integer "repository_file_id", null: false
@@ -21,6 +21,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_06_041500) do
     t.datetime "updated_at", null: false
     t.index ["repository_file_id"], name: "index_file_views_on_repository_file_id"
     t.index ["user_id"], name: "index_file_views_on_user_id"
+  end
+
+  create_table "key_concepts", force: :cascade do |t|
+    t.integer "repository_id"
+    t.string "name", null: false
+    t.text "description", null: false
+    t.text "key_files"
+    t.text "key_files_explanation"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["repository_id"], name: "index_key_concepts_on_repository_id"
   end
 
   create_table "repositories", force: :cascade do |t|
@@ -34,6 +45,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_06_041500) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "error_message"
+    t.string "current_commit_hash"
   end
 
   create_table "repository_files", force: :cascade do |t|
@@ -70,5 +82,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_06_041500) do
 
   add_foreign_key "file_views", "repository_files"
   add_foreign_key "file_views", "users"
+  add_foreign_key "key_concepts", "repositories"
   add_foreign_key "repository_files", "repositories"
 end

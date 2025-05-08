@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["panel", "content", "contextContent", "loadingIndicator", "errorMessage"]
+  static targets = ["panel", "content", "contextContent", "challengesContent", "patternsContent", "visualizationsContent", "loadingIndicator", "errorMessage"]
   static values = {
     repositoryId: Number,
     filePath: String,
@@ -299,6 +299,9 @@ export default class extends Controller {
   filePathValueChanged() {
     console.log("🔍 AI Assistant - File path changed:", this.filePathValue);
     this.contextLoaded = false;
+    this.challengesLoaded = false;
+    this.patternsLoaded = false;
+    this.visualizationsLoaded = false;
   }
   
   // Listen for custom events when a file is selected in the Monaco editor
@@ -442,5 +445,290 @@ export default class extends Controller {
         console.log("🔍 AI Assistant: Could not find an active file");
       }
     }, 1000); // Longer delay to ensure everything is loaded
+  }
+  
+  // Tab switching functionality
+  switchTab(event) {
+    const tabName = event.currentTarget.dataset.tab;
+    console.log("🔍 AI Assistant - Switching to tab:", tabName);
+    
+    // Update tab styling
+    document.querySelectorAll('.ai-assistant-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+    
+    // Show the associated content
+    document.querySelectorAll('.ai-tab-content').forEach(content => {
+      content.classList.remove('active');
+      content.classList.add('hidden');
+    });
+    
+    const activeContent = document.querySelector(`.ai-tab-content[data-tab="${tabName}"]`);
+    activeContent.classList.remove('hidden');
+    activeContent.classList.add('active');
+    
+    // Load content if needed
+    if (tabName === 'context') {
+      if (!this.contextLoaded) {
+        this.fetchFileContext();
+      }
+    } else if (tabName === 'challenges') {
+      if (!this.challengesLoaded) {
+        this.fetchLearningChallenges();
+      }
+    } else if (tabName === 'patterns') {
+      if (!this.patternsLoaded) {
+        this.fetchRelatedPatterns();
+      }
+    } else if (tabName === 'visualizations') {
+      if (!this.visualizationsLoaded) {
+        this.fetchVisualizations();
+      }
+    }
+  }
+  
+  fetchLearningChallenges() {
+    console.log("🔍 AI Assistant - Fetching learning challenges from API");
+    
+    // Don't proceed if we don't have the required data
+    if (!this.hasRepositoryIdValue || !this.hasFilePathValue) {
+      console.log("🔍 AI Assistant - Missing required values for API call:",
+        { hasRepositoryId: this.hasRepositoryIdValue, hasFilePath: this.hasFilePathValue });
+      
+      if (this.hasChallengesContentTarget) {
+        this.challengesContentTarget.innerHTML = "<p class='error'>Please select a file first to get learning challenges.</p>";
+      }
+      
+      if (this.hasLoadingIndicatorTarget) {
+        this.hideLoadingIndicator();
+      }
+      
+      return;
+    }
+    
+    // Always make sure loading indicator is visible first
+    if (this.hasLoadingIndicatorTarget) {
+      this.showLoadingIndicator();
+    }
+    
+    if (this.hasErrorMessageTarget) {
+      this.errorMessageTarget.classList.add('hidden');
+    }
+    
+    if (this.hasChallengesContentTarget) {
+      // Clear existing content to make loading more obvious
+      this.challengesContentTarget.innerHTML = "";
+    }
+    
+    // Force a small delay to ensure the loading state is rendered
+    setTimeout(() => {
+      const url = `/api/file_learning_challenges?repository_id=${this.repositoryIdValue}&file_path=${encodeURIComponent(this.filePathValue)}`;
+      console.log("🔍 AI Assistant - Request URL:", url);
+      
+      fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+      })
+      .then(response => {
+        console.log("🔍 AI Assistant - Learning challenges response status:", response.status);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch learning challenges: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("🔍 AI Assistant - Received learning challenges data");
+        // Add refresh button
+        const refreshButton = `<div class="refresh-button"><button data-action="click->ai-assistant#refreshChallenges">Refresh</button></div>`;
+        this.challengesContentTarget.innerHTML = this.formatExplanation(data.challenges) + refreshButton;
+        this.challengesLoaded = true;
+        
+        // Ensure loading indicator is completely hidden
+        this.hideLoadingIndicator();
+      })
+      .catch(error => {
+        console.error('Error fetching learning challenges:', error);
+        
+        if (this.hasErrorMessageTarget) {
+          this.errorMessageTarget.classList.remove('hidden');
+          this.errorMessageTarget.textContent = 'Failed to load learning challenges. Please try again.';
+        }
+        
+        this.hideLoadingIndicator();
+      });
+    }, 100); // Small delay to ensure UI updates
+  }
+  
+  fetchRelatedPatterns() {
+    console.log("🔍 AI Assistant - Fetching related patterns from API");
+    
+    // Don't proceed if we don't have the required data
+    if (!this.hasRepositoryIdValue || !this.hasFilePathValue) {
+      console.log("🔍 AI Assistant - Missing required values for API call:",
+        { hasRepositoryId: this.hasRepositoryIdValue, hasFilePath: this.hasFilePathValue });
+      
+      if (this.hasPatternsContentTarget) {
+        this.patternsContentTarget.innerHTML = "<p class='error'>Please select a file first to get related patterns.</p>";
+      }
+      
+      if (this.hasLoadingIndicatorTarget) {
+        this.hideLoadingIndicator();
+      }
+      
+      return;
+    }
+    
+    // Always make sure loading indicator is visible first
+    if (this.hasLoadingIndicatorTarget) {
+      this.showLoadingIndicator();
+    }
+    
+    if (this.hasErrorMessageTarget) {
+      this.errorMessageTarget.classList.add('hidden');
+    }
+    
+    if (this.hasPatternsContentTarget) {
+      // Clear existing content to make loading more obvious
+      this.patternsContentTarget.innerHTML = "";
+    }
+    
+    // Force a small delay to ensure the loading state is rendered
+    setTimeout(() => {
+      const url = `/api/file_related_patterns?repository_id=${this.repositoryIdValue}&file_path=${encodeURIComponent(this.filePathValue)}`;
+      console.log("🔍 AI Assistant - Request URL:", url);
+      
+      fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+      })
+      .then(response => {
+        console.log("🔍 AI Assistant - Related patterns response status:", response.status);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch related patterns: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("🔍 AI Assistant - Received related patterns data");
+        // Add refresh button
+        const refreshButton = `<div class="refresh-button"><button data-action="click->ai-assistant#refreshPatterns">Refresh</button></div>`;
+        this.patternsContentTarget.innerHTML = this.formatExplanation(data.patterns) + refreshButton;
+        this.patternsLoaded = true;
+        
+        // Ensure loading indicator is completely hidden
+        this.hideLoadingIndicator();
+      })
+      .catch(error => {
+        console.error('Error fetching related patterns:', error);
+        
+        if (this.hasErrorMessageTarget) {
+          this.errorMessageTarget.classList.remove('hidden');
+          this.errorMessageTarget.textContent = 'Failed to load related patterns. Please try again.';
+        }
+        
+        this.hideLoadingIndicator();
+      });
+    }, 100); // Small delay to ensure UI updates
+  }
+  
+  fetchVisualizations() {
+    console.log("🔍 AI Assistant - Fetching visualizations from API");
+    
+    // Don't proceed if we don't have the required data
+    if (!this.hasRepositoryIdValue || !this.hasFilePathValue) {
+      console.log("🔍 AI Assistant - Missing required values for API call:",
+        { hasRepositoryId: this.hasRepositoryIdValue, hasFilePath: this.hasFilePathValue });
+      
+      if (this.hasVisualizationsContentTarget) {
+        this.visualizationsContentTarget.innerHTML = "<p class='error'>Please select a file first to get visualizations.</p>";
+      }
+      
+      if (this.hasLoadingIndicatorTarget) {
+        this.hideLoadingIndicator();
+      }
+      
+      return;
+    }
+    
+    // Always make sure loading indicator is visible first
+    if (this.hasLoadingIndicatorTarget) {
+      this.showLoadingIndicator();
+    }
+    
+    if (this.hasErrorMessageTarget) {
+      this.errorMessageTarget.classList.add('hidden');
+    }
+    
+    if (this.hasVisualizationsContentTarget) {
+      // Clear existing content to make loading more obvious
+      this.visualizationsContentTarget.innerHTML = "";
+    }
+    
+    // Force a small delay to ensure the loading state is rendered
+    setTimeout(() => {
+      const url = `/api/file_visualizations?repository_id=${this.repositoryIdValue}&file_path=${encodeURIComponent(this.filePathValue)}`;
+      console.log("🔍 AI Assistant - Request URL:", url);
+      
+      fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+      })
+      .then(response => {
+        console.log("🔍 AI Assistant - Visualizations response status:", response.status);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch visualizations: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log("🔍 AI Assistant - Received visualizations data");
+        // Add refresh button
+        const refreshButton = `<div class="refresh-button"><button data-action="click->ai-assistant#refreshVisualizations">Refresh</button></div>`;
+        this.visualizationsContentTarget.innerHTML = this.formatExplanation(data.visualizations) + refreshButton;
+        this.visualizationsLoaded = true;
+        
+        // Ensure loading indicator is completely hidden
+        this.hideLoadingIndicator();
+      })
+      .catch(error => {
+        console.error('Error fetching visualizations:', error);
+        
+        if (this.hasErrorMessageTarget) {
+          this.errorMessageTarget.classList.remove('hidden');
+          this.errorMessageTarget.textContent = 'Failed to load visualizations. Please try again.';
+        }
+        
+        this.hideLoadingIndicator();
+      });
+    }, 100); // Small delay to ensure UI updates
+  }
+  
+  // Helper methods to refresh content
+  refreshChallenges() {
+    console.log("🔍 AI Assistant - Refreshing learning challenges");
+    this.challengesLoaded = false;
+    this.fetchLearningChallenges();
+  }
+  
+  refreshPatterns() {
+    console.log("🔍 AI Assistant - Refreshing related patterns");
+    this.patternsLoaded = false;
+    this.fetchRelatedPatterns();
+  }
+  
+  refreshVisualizations() {
+    console.log("🔍 AI Assistant - Refreshing visualizations");
+    this.visualizationsLoaded = false;
+    this.fetchVisualizations();
   }
 } 

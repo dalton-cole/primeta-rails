@@ -1,7 +1,7 @@
 class RepositoriesController < ApplicationController
   before_action :authenticate_user!, except: [:index]
-  before_action :set_repository, only: [:show, :track_time, :sync, :progress]
-  before_action :require_admin, only: [:new, :create, :sync]
+  before_action :set_repository, only: [:show, :track_time, :sync, :progress, :extract_key_concepts, :analyze_concept]
+  before_action :require_admin, only: [:new, :create, :sync, :extract_key_concepts, :analyze_concept]
 
   def index
     @repositories = Repository.all
@@ -9,12 +9,13 @@ class RepositoriesController < ApplicationController
 
   def show
     @repository = Repository.find(params[:id])
+    @key_concepts = @repository.key_concepts.order(:name)
     
     # Load repository files with their file views
     @repository_files = @repository.repository_files.includes(:file_views)
     
-    # Get key files for the repository
-    @key_files = @repository.repository_files.where(is_key_file: true).order(:path)
+    # Get all key files from key concepts
+    @key_files_from_concepts = aggregate_key_files_from_concepts(@key_concepts)
     
     # Create a hash of file IDs that current user has viewed
     @viewed_file_ids = current_user.file_views.where(repository_file_id: @repository_files.pluck(:id)).pluck(:repository_file_id).to_set
@@ -24,8 +25,9 @@ class RepositoriesController < ApplicationController
     @viewed_files_count = @viewed_file_ids.count
     @files_progress_percentage = @total_files_count > 0 ? ((@viewed_files_count.to_f / @total_files_count) * 100).round(1) : 0
     
-    @key_files_count = @key_files.count
-    @viewed_key_files_count = @key_files.count { |file| @viewed_file_ids.include?(file.id) }
+    # Calculate new key files metrics based on concept key files
+    @key_files_count = @key_files_from_concepts.count
+    @viewed_key_files_count = @key_files_from_concepts.count { |file| @viewed_file_ids.include?(file.id) }
     @key_files_progress_percentage = @key_files_count > 0 ? ((@viewed_key_files_count.to_f / @key_files_count) * 100).round(1) : 0
     
     @directory_structure = build_directory_structure(@repository_files)
@@ -54,6 +56,54 @@ class RepositoriesController < ApplicationController
     redirect_to @repository, notice: 'Repository sync started. This may take a few minutes.'
   end
   
+  # Extract key concepts for a repository
+  def extract_key_concepts
+    # First clear existing concepts to avoid duplicates
+    @repository.key_concepts.destroy_all
+    
+    # Queue the extraction job
+    ExtractKeyConceptsJob.perform_later(@repository.id)
+    
+    redirect_to @repository, notice: 'Key concept extraction started. This may take a few minutes.'
+  end
+  
+  # Analyze a specific concept in the repository
+  def analyze_concept
+    concept_name = params[:concept_name]
+    file_paths = params[:file_paths]
+    
+    if concept_name.blank?
+      redirect_to @repository, alert: 'Please provide a concept name to analyze.'
+      return
+    end
+    
+    # Parse multiple concepts if comma-separated
+    concepts = concept_name.split(',').map(&:strip).reject(&:blank?).uniq
+    
+    if concepts.empty?
+      redirect_to @repository, alert: 'Please provide at least one valid concept name to analyze.'
+      return
+    end
+    
+    # Parse file paths if provided
+    paths = nil
+    if file_paths.present?
+      paths = file_paths.split(',').map(&:strip).reject(&:blank?).uniq
+    end
+    
+    # Queue the specific concept analysis job
+    AnalyzeConceptJob.perform_later(@repository.id, concepts, paths)
+    
+    concept_message = concepts.size > 1 ? "concepts '#{concepts.join(', ')}'" : "concept '#{concepts.first}'"
+    
+    path_message = ""
+    if paths.present?
+      path_message = " in #{paths.size > 1 ? 'paths' : 'path'} '#{paths.join(', ')}'"
+    end
+    
+    redirect_to @repository, notice: "Analysis of the #{concept_message}#{path_message} has started. This may take a few minutes."
+  end
+  
   # Track time spent on repository
   def track_time
     time_spent = params[:time_spent].to_i
@@ -72,8 +122,9 @@ class RepositoriesController < ApplicationController
     # Get repository files with their file views
     repository_files = @repository.repository_files.includes(:file_views)
     
-    # Get key files for the repository
-    key_files = @repository.repository_files.where(is_key_file: true).order(:path)
+    # Get key files from concepts
+    key_concepts = @repository.key_concepts
+    key_files_from_concepts = aggregate_key_files_from_concepts(key_concepts)
     
     # Create a hash of file IDs that current user has viewed
     viewed_file_ids = current_user.file_views.where(repository_file_id: repository_files.pluck(:id)).pluck(:repository_file_id).to_set
@@ -83,8 +134,8 @@ class RepositoriesController < ApplicationController
     viewed_files_count = viewed_file_ids.count
     files_progress_percentage = total_files_count > 0 ? ((viewed_files_count.to_f / total_files_count) * 100).round(1) : 0
     
-    key_files_count = key_files.count
-    viewed_key_files_count = key_files.count { |file| viewed_file_ids.include?(file.id) }
+    key_files_count = key_files_from_concepts.count
+    viewed_key_files_count = key_files_from_concepts.count { |file| viewed_file_ids.include?(file.id) }
     key_files_progress_percentage = key_files_count > 0 ? ((viewed_key_files_count.to_f / key_files_count) * 100).round(1) : 0
     
     render json: {
@@ -133,5 +184,20 @@ class RepositoriesController < ApplicationController
     end
     
     structure
+  end
+  
+  # Aggregate all unique key files from key concepts
+  def aggregate_key_files_from_concepts(key_concepts)
+    # Get all file paths from key concepts
+    all_key_file_paths = []
+    key_concepts.each do |concept|
+      all_key_file_paths.concat(concept.key_files) if concept.key_files.present?
+    end
+    
+    # Remove duplicates
+    unique_file_paths = all_key_file_paths.uniq
+    
+    # Find matching repository files
+    @repository.repository_files.where(path: unique_file_paths)
   end
 end

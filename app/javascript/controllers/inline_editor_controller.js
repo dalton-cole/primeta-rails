@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus";
 
 // Connects to data-controller="inline-editor"
 export default class extends Controller {
-  static targets = ["infoPanel", "editorContainer", "fileTitle", "fileStats", "filePath", "keyFileToggle"];
+  static targets = ["infoPanel", "editorContainer", "fileTitle", "fileStats", "filePath"];
   static values = {
     repositoryId: Number
   }
@@ -14,8 +14,7 @@ export default class extends Controller {
       editorContainer: this.hasEditorContainerTarget,
       fileTitle: this.hasFileTitleTarget,
       fileStats: this.hasFileStatsTarget,
-      filePath: this.hasFilePathTarget,
-      keyFileToggle: this.hasKeyFileToggleTarget
+      filePath: this.hasFilePathTarget
     });
     
     // Initialize state
@@ -141,30 +140,16 @@ export default class extends Controller {
       if (!response.ok) throw new Error('Failed to load file content');
       
       const fileData = await response.json();
+      this.currentFileData = fileData;
       
-      // Create or update header elements if missing
+      // Ensure header elements exist
       this.ensureHeaderElements();
       
-      // Update file title and stats
+      // Update file title
       if (this.hasFileTitleTarget) {
         // Extract the filename from the path for the title
         const fileName = fileData.path.split('/').pop();
         this.fileTitleTarget.textContent = fileName;
-        
-        // Update key file toggle button if user is admin
-        if (this.hasKeyFileToggleTarget) {
-          this.keyFileToggleTarget.setAttribute('data-file-id', fileId);
-          this.keyFileToggleTarget.setAttribute('data-is-key-file', fileData.is_key_file);
-          
-          const toggleText = this.keyFileToggleTarget.querySelector('.toggle-text');
-          if (fileData.is_key_file) {
-            this.keyFileToggleTarget.classList.add('active');
-            toggleText.textContent = 'Unmark as Key File';
-          } else {
-            this.keyFileToggleTarget.classList.remove('active');
-            toggleText.textContent = 'Mark as Key File';
-          }
-        }
       } else {
         console.warn("Missing fileTitle target");
       }
@@ -190,6 +175,14 @@ export default class extends Controller {
         badge.className = `language-badge ${badgeClass}`;
         badge.textContent = formattedLanguage;
         this.filePathTarget.appendChild(badge);
+        
+        // Add key concept file indication if this is a key file
+        if (fileData.is_concept_key_file) {
+          const keyBadge = document.createElement('span');
+          keyBadge.className = 'language-badge key-file-badge';
+          keyBadge.innerHTML = '<span class="key-file-star">★</span> Key File';
+          this.filePathTarget.appendChild(keyBadge);
+        }
       }
       
       if (this.hasFileStatsTarget) {
@@ -222,31 +215,17 @@ export default class extends Controller {
     // Clear the container first
     this.editorContainerTarget.innerHTML = '';
     
-    // Check if user is admin
-    const isAdmin = document.body.hasAttribute('data-user-admin');
-    
     // Build header structure with improved layout
     let editorHtml = `
       <div class="editor-header" style="flex-shrink: 0; margin-bottom: 10px;">
         <div class="file-title-container">
           <button data-action="click->inline-editor#showInfo" class="back-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="back-icon">
-              <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+              <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2zm6 11.5a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm4.5-2.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0zm0-2.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0zm0-2.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0zm-7-1a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zM3 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 3 8zm0 2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5z"/>
             </svg>
-            <span>Back to Repository</span>
+            <span>Overview Dashboard</span>
           </button>
-          <h2 data-inline-editor-target="fileTitle" class="file-title"></h2>`;
-          
-    // Only show key file toggle button for admins
-    if (isAdmin) {
-      editorHtml += `
-          <button data-action="click->inline-editor#toggleKeyFile" class="key-file-toggle" data-inline-editor-target="keyFileToggle">
-            <span class="key-file-star">★</span>
-            <span class="toggle-text">Mark as Key File</span>
-          </button>`;
-    }
-    
-    editorHtml += `
+          <h2 data-inline-editor-target="fileTitle" class="file-title"></h2>
         </div>
       </div>
       <div id="monaco-container" style="flex: 1 1 auto; min-height: 0; height: auto;"></div>
@@ -572,43 +551,5 @@ export default class extends Controller {
     };
     
     return languageMap[normalizedLang] || 'lang-default';
-  }
-  
-  // Toggle key file status
-  async toggleKeyFile(event) {
-    const button = event.currentTarget;
-    const fileId = button.getAttribute('data-file-id');
-    const isKeyFile = button.getAttribute('data-is-key-file') === 'true';
-    
-    try {
-      const response = await fetch(`/repository_files/${fileId}/toggle_key_file`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({ is_key_file: !isKeyFile })
-      });
-      
-      if (!response.ok) throw new Error('Failed to update key file status');
-      
-      const data = await response.json();
-      
-      // Update button state
-      button.setAttribute('data-is-key-file', data.is_key_file);
-      const toggleText = button.querySelector('.toggle-text');
-      
-      if (data.is_key_file) {
-        button.classList.add('active');
-        toggleText.textContent = 'Unmark as Key File';
-      } else {
-        button.classList.remove('active');
-        toggleText.textContent = 'Mark as Key File';
-      }
-      
-    } catch (error) {
-      console.error('Error updating key file status:', error);
-      alert('Failed to update key file status');
-    }
   }
 } 

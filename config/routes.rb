@@ -16,6 +16,8 @@ Rails.application.routes.draw do
     resources :repository_files, only: [:index], controller: 'repositories/repository_files'
     post :track_time, on: :member
     post :sync, on: :member
+    post :extract_key_concepts, on: :member
+    post :analyze_concept, on: :member
     get :progress, on: :member
   end
   
@@ -23,12 +25,15 @@ Rails.application.routes.draw do
   resources :repository_files, only: [:show] do
     post :track_time, on: :member
     get :content, on: :member
-    post :toggle_key_file, on: :member
   end
   
   # API routes
   namespace :api do
     get '/file_context', to: 'file_context#show'
+    get '/file_suggestions', to: 'file_context#suggestions'
+    get '/file_learning_challenges', to: 'file_context#learning_challenges'
+    get '/file_related_patterns', to: 'file_context#related_patterns'
+    get '/file_visualizations', to: 'file_context#visualizations'
     get '/test_gemini', to: 'file_context#test_gemini'
   end
   
