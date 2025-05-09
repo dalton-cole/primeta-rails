@@ -280,29 +280,35 @@
   border: none;
   cursor: pointer;
   font-family: 'Inter', sans-serif;
+  text-decoration: none;
 }
 
 .repo-card .btn-primary {
   background: linear-gradient(135deg, var(--primary-dark-purple) 0%, var(--accent-purple) 100%);
   color: white;
   box-shadow: 0 8px 16px rgba(67, 56, 202, 0.3);
+  text-decoration: none;
 }
 
 .repo-card .btn-primary:hover {
   transform: translateY(-4px) scale(1.05);
   box-shadow: 0 12px 20px rgba(67, 56, 202, 0.4);
+  color: white;
+  text-decoration: none;
 }
 
 .repo-card .btn-outline {
   background: rgba(99, 102, 241, 0.1);
   color: var(--text-accent);
   border: 1px solid rgba(99, 102, 241, 0.3);
+  text-decoration: none;
 }
 
 .repo-card .btn-outline:hover {
   background: rgba(99, 102, 241, 0.2);
   border-color: rgba(99, 102, 241, 0.5);
   transform: translateY(-4px);
+  text-decoration: none;
 }
 
 /* GitHub Link */
@@ -371,29 +377,35 @@
   overflow: hidden;
   border: none;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .banner-actions .btn-primary {
   background: linear-gradient(135deg, var(--primary-dark-purple) 0%, var(--accent-purple) 100%);
   color: white;
   box-shadow: 0 8px 16px rgba(67, 56, 202, 0.3);
+  text-decoration: none;
 }
 
 .banner-actions .btn-primary:hover {
   transform: translateY(-4px) scale(1.05);
   box-shadow: 0 12px 20px rgba(67, 56, 202, 0.4);
+  color: white;
+  text-decoration: none;
 }
 
 .banner-actions .btn-outline {
   background: rgba(99, 102, 241, 0.1);
   color: var(--text-accent);
   border: 1px solid rgba(99, 102, 241, 0.3);
+  text-decoration: none;
 }
 
 .banner-actions .btn-outline:hover {
   background: rgba(99, 102, 241, 0.2);
   border-color: rgba(99, 102, 241, 0.5);
   transform: translateY(-4px);
+  text-decoration: none;
 }
 
 /* Empty State */
@@ -430,6 +442,8 @@
 .empty-state .btn:hover {
   transform: translateY(-4px) scale(1.05);
   box-shadow: 0 12px 20px rgba(67, 56, 202, 0.4);
+  color: white;
+  text-decoration: none;
 }
 
 /* Media Queries */

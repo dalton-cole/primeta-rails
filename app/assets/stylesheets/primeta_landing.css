@@ -94,17 +94,21 @@
   overflow: hidden;
   border: none;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .btn-primary {
   background: linear-gradient(135deg, var(--primary-dark-purple) 0%, var(--accent-purple) 100%);
   color: white;
   box-shadow: 0 8px 16px rgba(67, 56, 202, 0.3);
+  text-decoration: none;
 }
 
 .btn-primary:hover {
   transform: translateY(-4px) scale(1.05);
   box-shadow: 0 12px 20px rgba(67, 56, 202, 0.4);
+  color: white;
+  text-decoration: none;
 }
 
 .btn-outline {
@@ -536,12 +540,14 @@
   background: white;
   color: var(--primary-dark-purple);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  text-decoration: none;
 }
 
 .cta-content .btn:hover {
   background: rgba(255, 255, 255, 0.9);
   transform: translateY(-4px) scale(1.05);
   box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3);
+  text-decoration: none;
 }
 
 /* Responsive Adjustments */

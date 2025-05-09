@@ -111,6 +111,25 @@ p {
   align-items: center;
 }
 
+.logo a {
+  text-decoration: none;
+}
+
+.logo a:hover {
+  text-decoration: none;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  width: 28px;
+  height: 28px;
+}
+
 .logo h1 {
   margin: 0;
   font-size: 1.5rem;
