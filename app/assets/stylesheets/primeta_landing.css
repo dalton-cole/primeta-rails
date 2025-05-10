@@ -589,6 +589,11 @@
   .primeta-features {
     grid-template-columns: 1fr;
   }
+  
+  /* Make code browser mockup responsive on tablets */
+  .code-browser-mockup {
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 576px) {
@@ -613,6 +618,11 @@
     width: 100%;
     border-right: none;
     border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+  }
+  
+  /* Hide code browser mockup on mobile */
+  .hero-image {
+    display: none;
   }
 }
 

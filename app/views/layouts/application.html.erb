@@ -58,8 +58,7 @@
               </div>
             </div>
           <% else %>
-            <%= link_to "Sign In", new_user_session_path, class: "nav-link" %>
-            <%= link_to "Sign Up", new_user_registration_path, class: "nav-link" %>
+            <%= link_to "Repositories", repositories_path, class: "nav-link" %>
           <% end %>
         </nav>
       </div>
@@ -94,7 +93,6 @@
         <div class="ai-toggle-icon">
           <img src="/images/icon.svg" width="24" height="24" alt="Primeta AI" />
         </div>
-        <span class="toggle-label">Primeta AI</span>
       </button>
       <div class="ai-assistant-panel hidden" data-ai-assistant-target="panel">
         <div class="ai-assistant-header">
@@ -118,7 +116,6 @@
           <!-- Loading indicator -->
           <div class="ai-loading <%= 'hidden' if controller_name != 'repository_files' && (controller_name != 'repositories' || !@repository) %>" data-ai-assistant-target="loadingIndicator">
             <div class="spinner"></div>
-            <p>Getting AI insights...</p>
           </div>
           
           <!-- Error message -->
@@ -132,6 +129,34 @@
                 <h3>About Primeta.ai</h3>
                 <p>Primeta.ai is the fastest way to learn from real-world codebases. Our AI-powered platform helps you understand complex code and build your programming knowledge.</p>
                 <p>Explore our <a href="/repositories">repository collection</a> to start learning from real code.</p>
+                
+                <h4>Contact Us</h4>
+                <ul>
+                  <li><i class="bi bi-envelope"></i> <a href="mailto:dalton@deployto.dev">dalton@deployto.dev</a></li>
+                  <li><i class="bi bi-twitter"></i> <a href="https://twitter.com/primeta_ai" target="_blank">@primeta_ai</a></li>
+                  <li><i class="bi bi-linkedin"></i> <a href="https://www.linkedin.com/in/daltoncole/" target="_blank">linkedin.com/in/daltoncole</a></li>
+                </ul>
+              </div>
+            <% elsif controller_name == 'repositories' && @repository && !@repository_file %>
+              <!-- Information for repository show page with no file selected -->
+              <div class="ai-static-info">
+                <h3>How to Use the AI Assistant</h3>
+                <p>You're currently viewing the <strong><%= @repository.name %></strong> repository. To get AI-powered insights:</p>
+                
+                <h4>Step 1: Select a File</h4>
+                <p>Browse the file tree on the left side of the screen and click on any file you'd like to understand.</p>
+                
+                <h4>Step 2: Get AI Analysis</h4>
+                <p>After selecting a file, the AI assistant will automatically analyze it and provide:</p>
+                <ul>
+                  <li><i class="bi bi-file-earmark-code"></i> <strong>File purpose and functionality</strong></li>
+                  <li><i class="bi bi-diagram-3"></i> <strong>How it connects with other files</strong></li>
+                  <li><i class="bi bi-lightbulb"></i> <strong>Key components and patterns</strong></li>
+                  <li><i class="bi bi-code-square"></i> <strong>Explanations of complex code sections</strong></li>
+                </ul>
+                
+                <h4>Step 3: Explore Challenges</h4>
+                <p>Switch to the "Challenges" tab to test your understanding with learning exercises based on the selected file.</p>
               </div>
             <% else %>
               <div class="ai-assistant-placeholder">
@@ -148,6 +173,28 @@
                 <h3>Learning with Primeta</h3>
                 <p>Our AI generates tailored coding challenges to test your understanding of the codebase you're exploring.</p>
                 <p>Select a file in a repository to start exploring challenges!</p>
+                
+                <h4>Contact Us</h4>
+                <ul>
+                  <li><i class="bi bi-envelope"></i> <a href="mailto:dalton@deployto.dev">dalton@deployto.dev</a></li>
+                  <li><i class="bi bi-twitter"></i> <a href="https://twitter.com/primeta_ai" target="_blank">@primeta_ai</a></li>
+                  <li><i class="bi bi-linkedin"></i> <a href="https://www.linkedin.com/in/daltoncole/" target="_blank">linkedin.com/in/daltoncole</a></li>
+                </ul>
+              </div>
+            <% elsif controller_name == 'repositories' && @repository && !@repository_file %>
+              <!-- Information for repository show page with no file selected for challenges tab-->
+              <div class="ai-static-info">
+                <h3>Learning Challenges</h3>
+                <p>Our AI can generate tailored coding exercises to help you understand this codebase better.</p>
+                
+                <h4>How It Works</h4>
+                <ul>
+                  <li><i class="bi bi-1-circle"></i> <strong>Select any file</strong> from the file tree on the left</li>
+                  <li><i class="bi bi-2-circle"></i> <strong>Switch to this Challenges tab</strong> after file selection</li>
+                  <li><i class="bi bi-3-circle"></i> <strong>Complete the challenge</strong> to test your understanding</li>
+                </ul>
+                
+                <p>Challenges are personalized based on the specific file you select and help reinforce your understanding of the code patterns and concepts.</p>
               </div>
             <% else %>
               <div class="ai-assistant-placeholder">
@@ -188,9 +235,8 @@
               border-top-color: #2979ff;
               border-radius: 50%;
               animation: spin 1s infinite linear;
-              margin: 0 auto 15px auto;
+              margin: 0 auto;
             "></div>
-            <p>Fetching context from Gemini API...</p>
           </div>
         `;
         document.body.appendChild(container);

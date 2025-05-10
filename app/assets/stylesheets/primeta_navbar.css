@@ -42,10 +42,6 @@
   color: white;
   font-weight: 700;
   font-family: 'Sora', sans-serif;
-  background: linear-gradient(120deg, var(--primary-light-purple), white);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 .main-nav {
