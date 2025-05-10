@@ -15,8 +15,8 @@ class User < ApplicationRecord
   # Validations
   validates :role, inclusion: { in: ROLES }, allow_nil: true
   
-  # Protect GitHub username and email from updates once set
-  attr_readonly :github_username, :email
+  # Protect GitHub username from updates once set
+  attr_readonly :github_username
   
   before_validation :set_default_role, on: :create
   
