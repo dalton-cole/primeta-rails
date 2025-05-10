@@ -70,6 +70,83 @@
     </div>
   </section>
 
+  <!-- Featured Repositories Section -->
+  <% if @featured_repositories.present? %>
+    <section class="featured-repos-section">
+      <div class="container">
+        <h2 class="section-title">Featured Repositories</h2>
+        <div class="repo-grid">
+          <% @featured_repositories.each do |repo| %>
+            <div class="repo-card">
+              <div class="repo-card-header">
+                <% if repo.github_repo? %>
+                  <div class="github-info">
+                    <img src="<%= repo.github_avatar_url %>" alt="GitHub Avatar" class="github-avatar">
+                  </div>
+                <% end %>
+                <h3><%= link_to repo.name, repository_path(repo) %></h3>
+                <span class="status-indicator <%= repo.status %>"><%= repo.status.capitalize %></span>
+              </div>
+
+              <% if repo.language_stats.any? %>
+                <div class="language-tags">
+                  <% repo.language_stats.each do |stat| %>
+                    <span class="language-tag <%= stat[:language].downcase %>">
+                      <%= stat[:language] %> <small><%= stat[:percentage] %>%</small>
+                    </span>
+                  <% end %>
+                </div>
+              <% end %>
+
+              <p class="description"><%= repo.description.present? ? truncate(repo.description, length: 100) : "No description provided" %></p>
+
+              <div class="quick-stats">
+                <div class="stat-item">
+                  <i class="fas fa-file-code"></i>
+                  <span><%= repo.file_count %> files</span>
+                </div>
+                <div class="stat-item">
+                  <i class="fas fa-users"></i>
+                  <span><%= repo.explorer_count %> <%= repo.explorer_count == 1 ? 'explorer' : 'explorers' %></span>
+                </div>
+                <div class="stat-item">
+                  <i class="fas fa-hdd"></i>
+                  <span><%= number_to_human_size(repo.average_file_size * repo.file_count) %></span>
+                </div>
+                <% if repo.short_commit_hash %>
+                  <div class="stat-item commit-hash">
+                    <i class="fas fa-code-branch"></i>
+                    <% if repo.commit_hash_url %>
+                      <%= link_to repo.short_commit_hash, repo.commit_hash_url, target: "_blank", title: "View commit "+repo.current_commit_hash %>
+                    <% else %>
+                      <span><%= repo.short_commit_hash %></span>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+
+              <div class="repo-card-actions">
+                <%= link_to "Explore", repository_path(repo), 
+                    class: "btn btn-outline",
+                    data: { 
+                      turbo_frame: "_top",
+                      require_auth: !user_signed_in?,
+                      redirect: root_path,
+                      controller: user_signed_in? ? "" : "auth-redirect"
+                    } %>
+                <% if repo.github_url %>
+                  <%= link_to repo.github_url, target: "_blank", class: "github-link", title: "View on GitHub" do %>
+                    <i class="fab fa-github"></i>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </section>
+  <% end %>
+
   <!-- Features Section -->
   <section class="features-section">
     <div class="container">
