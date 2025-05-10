@@ -5,21 +5,29 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="description" content="The Fastest Way to Learn From Real-World Codebases">
+    <meta name="description" content="<%= content_for(:meta_description) || 'The Fastest Way to Learn From Real-World Codebases' %>">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
+    <!-- Canonical URL for SEO -->
+    <link rel="canonical" href="<%= request.original_url %>" />
+
     <!-- Open Graph / Social Meta Tags -->
-    <meta property="og:title" content="<%= content_for(:title) || 'Primeta.ai — The Fastest Way to Learn From Real-World Codebases' %>" />
-    <meta property="og:description" content="<%= content_for(:og_description) || 'Explore, understand, and master production codebases with AI-powered insights and challenges.' %>" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:type" content="<%= (controller_name == 'repositories' && action_name == 'show') ? 'article' : 'website' %>" />
+    <meta property="og:title" content="<%= content_for(:og_title) || content_for(:title) || 'Primeta.ai — The Fastest Way to Learn From Real-World Codebases' %>" />
+    <meta property="og:description" content="<%= content_for(:og_description) || content_for(:meta_description) || 'Explore, understand, and master production codebases with AI-powered insights and challenges.' %>" />
     <meta property="og:image" content="<%= content_for(:og_image) || image_url('primeta-og.png') %>" />
+    <meta property="og:image:alt" content="<%= content_for(:og_image_alt) || 'Primeta.ai — The Fastest Way to Learn From Real-World Codebases' %>" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:url" content="<%= request.original_url %>" />
     <meta property="og:site_name" content="Primeta.ai" />
-    <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="<%= content_for(:title) || 'Primeta.ai — The Fastest Way to Learn From Real-World Codebases' %>" />
-    <meta name="twitter:description" content="<%= content_for(:og_description) || 'Explore, understand, and master production codebases with AI-powered insights and challenges.' %>" />
-    <meta name="twitter:image" content="<%= content_for(:og_image) || image_url('primeta-og.png') %>" />
+    <meta name="twitter:title" content="<%= content_for(:twitter_title) || content_for(:title) || 'Primeta.ai — The Fastest Way to Learn From Real-World Codebases' %>" />
+    <meta name="twitter:description" content="<%= content_for(:twitter_description) || content_for(:og_description) || content_for(:meta_description) || 'Explore, understand, and master production codebases with AI-powered insights and challenges.' %>" />
+    <meta name="twitter:image" content="<%= content_for(:twitter_image) || content_for(:og_image) || image_url('primeta-og.png') %>" />
+    <meta name="twitter:image:alt" content="<%= content_for(:twitter_image_alt) || content_for(:og_image_alt) || 'Primeta.ai — The Fastest Way to Learn From Real-World Codebases' %>" />
     <meta name="twitter:site" content="@primeta_ai" />
     <meta name="twitter:creator" content="@primeta_ai" />
 
@@ -46,6 +54,8 @@
     <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
+
+    <meta name="theme-color" content="#6366F1">
   </head>
 
   <body <%= "data-user-admin=true" if user_signed_in? && current_user.admin? %>>
