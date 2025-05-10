@@ -9,6 +9,20 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
+    <!-- Open Graph / Social Meta Tags -->
+    <meta property="og:title" content="<%= content_for(:title) || 'Primeta.ai — The Fastest Way to Learn From Real-World Codebases' %>" />
+    <meta property="og:description" content="<%= content_for(:og_description) || 'Explore, understand, and master production codebases with AI-powered insights and challenges.' %>" />
+    <meta property="og:image" content="<%= content_for(:og_image) || image_url('primeta-og.png') %>" />
+    <meta property="og:url" content="<%= request.original_url %>" />
+    <meta property="og:site_name" content="Primeta.ai" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="<%= content_for(:title) || 'Primeta.ai — The Fastest Way to Learn From Real-World Codebases' %>" />
+    <meta name="twitter:description" content="<%= content_for(:og_description) || 'Explore, understand, and master production codebases with AI-powered insights and challenges.' %>" />
+    <meta name="twitter:image" content="<%= content_for(:og_image) || image_url('primeta-og.png') %>" />
+    <meta name="twitter:site" content="@primeta_ai" />
+    <meta name="twitter:creator" content="@primeta_ai" />
+
     <%= yield :head %>
 
     <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
