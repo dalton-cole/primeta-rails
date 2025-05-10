@@ -85,6 +85,9 @@
          <% elsif controller_name == 'repositories' && @repository %>
          data-ai-assistant-repository-id-value="<%= @repository.id %>"
          data-ai-assistant-current-repository-value="true"
+         <% if !@repository_file %>
+         data-ai-assistant-repository-no-file-value="true"
+         <% end %>
          <% else %>
          data-ai-assistant-static-info-value="true"
          <% end %>
@@ -93,6 +96,7 @@
         <div class="ai-toggle-icon">
           <img src="/images/icon.svg" width="24" height="24" alt="Primeta AI" />
         </div>
+        <span class="ai-toggle-text"></span>
       </button>
       <div class="ai-assistant-panel hidden" data-ai-assistant-target="panel">
         <div class="ai-assistant-header">
@@ -114,7 +118,7 @@
         <!-- Tab contents -->
         <div class="ai-assistant-content" data-ai-assistant-target="content">
           <!-- Loading indicator -->
-          <div class="ai-loading <%= 'hidden' if controller_name != 'repository_files' && (controller_name != 'repositories' || !@repository) %>" data-ai-assistant-target="loadingIndicator">
+          <div class="ai-loading <%= 'hidden' unless controller_name == 'repository_files' && @repository && @repository_file %>" data-ai-assistant-target="loadingIndicator">
             <div class="spinner"></div>
           </div>
           
@@ -122,7 +126,10 @@
           <div class="ai-error hidden" data-ai-assistant-target="errorMessage"></div>
           
           <!-- Context tab content -->
-          <div class="ai-tab-content active" data-tab="context" data-ai-assistant-target="contextContent">
+          <div class="ai-tab-content active" data-tab="context" data-ai-assistant-target="contextContent"
+               <% if controller_name == 'repositories' && @repository && !@repository_file %>
+               data-is-repository-guide="true"
+               <% end %>>
             <% if controller_name != 'repository_files' && (controller_name != 'repositories' || !@repository) %>
               <!-- Static information for non-repository pages -->
               <div class="ai-static-info">
@@ -166,7 +173,10 @@
           </div>
           
           <!-- Learning Challenges tab content -->
-          <div class="ai-tab-content" data-tab="challenges" data-ai-assistant-target="challengesContent">
+          <div class="ai-tab-content" data-tab="challenges" data-ai-assistant-target="challengesContent"
+               <% if controller_name == 'repositories' && @repository && !@repository_file %>
+               data-is-repository-guide="true"
+               <% end %>>
             <% if controller_name != 'repository_files' && (controller_name != 'repositories' || !@repository) %>
               <!-- Static information for non-repository pages -->
               <div class="ai-static-info">

@@ -506,7 +506,7 @@
 .repo-grid .repo-card:nth-child(3) { animation-delay: 0.3s; }
 .repo-grid .repo-card:nth-child(4) { animation-delay: 0.4s; }
 .repo-grid .repo-card:nth-child(5) { animation-delay: 0.5s; }
-.repo-grid .repo-card:nth-child(6) { animation-delay: 0.6s; }
+.repo-grid .repo-card:nth-child(6) { animation-delay: 0.6s; } 
 
 /* Concept Cards Grid and Styling */
 .concepts-grid {

@@ -1,17 +1,105 @@
 /* File Explorer Icon Fix */
 
-/* Hide both open and closed folder icons by default */
-.directory-label i.fa-folder,
-.directory-label i.fa-folder-open {
-  display: none;
+/* Style the folder icon */
+.directory-label .folder-icon {
+  display: inline-block;
+  color: var(--primary-light-purple);
+  width: 16px;
+  text-align: center;
+  transition: all 0.2s ease;
 }
 
-/* Show closed folder icon when directory is not expanded */
-.directory-label:not(.expanded) i.fa-folder {
-  display: inline-block;
+/* Change folder icon when expanded */
+.directory-label.expanded .folder-icon::before {
+  content: "\f07c"; /* fa-folder-open */
 }
 
-/* Show open folder icon when directory is expanded */
-.directory-label.expanded i.fa-folder-open {
-  display: inline-block;
+/* Make sure caret rotates correctly */
+.directory-label i.fa-caret-right {
+  transition: transform 0.3s ease;
+  color: var(--primary-light-purple);
+  width: 16px;
+  text-align: center;
+  transform: rotate(0deg); /* Initial state: not rotated */
+}
+
+/* Rotate caret when expanded */
+.directory-label.expanded i.fa-caret-right {
+  transform: rotate(90deg) !important;
+}
+
+/* Make caret rotate back when collapsed */
+.directory-label:not(.expanded) i.fa-caret-right {
+  transform: rotate(0deg) !important;
+}
+
+/* File explorer container positioning */
+.file-explorer {
+  position: relative;
+  overflow-y: auto !important;
+  height: auto !important;
+}
+
+/* File tree structure fixes */
+.file-tree {
+  position: relative;
+  height: auto;
+}
+
+/* Directory positioning fixes */
+.directory {
+  position: relative;
+  margin-bottom: 0.25rem;
+  height: auto;
+}
+
+/* Ensure directory children display properly */
+.directory-children {
+  position: relative;
+  opacity: 1 !important;
+  overflow: visible !important;
+  transition: none !important;
+  padding-left: 1.5rem;
+  height: auto;
+}
+
+/* Make sure directory children have proper display */
+.directory:not(.expanded) > .directory-children {
+  display: none !important;
+  height: 0 !important;
+}
+
+.directory.expanded > .directory-children {
+  display: block !important;
+  max-height: none !important;
+  height: auto !important;
+}
+
+/* Highlight effect when directory is expanded */
+.directory-label.expanded {
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+/* Fix spacing between items */
+.file-item {
+  margin-bottom: 0.25rem;
+  position: relative;
+  height: auto;
+  width: 100%;
+}
+
+/* Ensure proper stacking context */
+.sidebar {
+  overflow: hidden;
+}
+
+/* Fix any potential issues with nested elements */
+.directory-label {
+  position: relative;
+  z-index: 1;
+}
+
+/* Fix for proper layout flow */
+.file-tree * {
+  box-sizing: border-box;
 } 

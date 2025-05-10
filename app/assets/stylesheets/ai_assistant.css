@@ -6,33 +6,93 @@
   font-family: 'Inter', sans-serif;
 }
 
+/* Enhanced AI Assistant Toggle Button */
 .ai-assistant-toggle {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
+  min-width: 54px;
+  height: 54px;
+  border-radius: 27px;
   background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   cursor: pointer;
-  box-shadow: 0 8px 16px rgba(67, 56, 202, 0.3);
+  box-shadow: 0 8px 24px rgba(67, 56, 202, 0.5), 0 0 0 3px rgba(99, 102, 241, 0.3);
   border: none;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
   overflow: hidden;
+  animation: pulse-glow 2s infinite alternate;
+  padding: 0;
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 8px 24px rgba(67, 56, 202, 0.5), 0 0 0 3px rgba(99, 102, 241, 0.3);
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 12px 28px rgba(67, 56, 202, 0.8), 0 0 0 5px rgba(99, 102, 241, 0.5);
+    transform: scale(1.05);
+  }
 }
 
 .ai-toggle-icon {
   position: relative;
   z-index: 2;
-  height: 24px;
-  width: 24px;
+  height: 28px;
+  width: 28px;
+  animation: bounce 1s infinite alternate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-toggle-text {
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  position: relative;
+  z-index: 2;
+  display: none;
+}
+
+/* Add a subtle shimmer effect to the text */
+@keyframes shimmer {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.ai-toggle-text {
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.9) 0%, 
+    rgba(255, 255, 255, 1) 50%, 
+    rgba(255, 255, 255, 0.9) 100%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shimmer 3s infinite linear;
+}
+
+@keyframes bounce {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-3px);
+  }
 }
 
 .ai-assistant-toggle:hover {
-  transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 12px 20px rgba(67, 56, 202, 0.4);
+  transform: translateY(-4px) scale(1.1);
+  box-shadow: 0 16px 32px rgba(67, 56, 202, 0.6), 0 0 0 6px rgba(99, 102, 241, 0.6);
+  animation: none;
 }
 
 .ai-assistant-toggle::before {
@@ -44,7 +104,7 @@
   height: 100%;
   background: linear-gradient(90deg, 
     rgba(255, 255, 255, 0) 0%, 
-    rgba(255, 255, 255, 0.2) 50%, 
+    rgba(255, 255, 255, 0.4) 50%, 
     rgba(255, 255, 255, 0) 100%);
   transition: left 0.6s;
   z-index: 1;
@@ -52,6 +112,35 @@
 
 .ai-assistant-toggle:hover::before {
   left: 100%;
+}
+
+/* Add a "pulse" ring around the button */
+.ai-assistant-toggle::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border-radius: 50%;
+  background: transparent;
+  border: 2px solid rgba(99, 102, 241, 0.6);
+  opacity: 0;
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.1);
+    opacity: 0;
+  }
 }
 
 /* Brain icon animations */
@@ -101,7 +190,7 @@
 
 .ai-assistant-panel {
   position: absolute;
-  bottom: 60px;
+  bottom: 70px;
   right: 0;
   width: 380px;
   background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
@@ -422,6 +511,19 @@
   visibility: hidden !important;
 }
 
+/* Extra hiding class for absolute certainty */
+.ai-loading-hidden {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: absolute !important;
+  pointer-events: none !important;
+}
+
 .ai-assistant-tabs {
   display: flex;
   background: linear-gradient(90deg, #1a1a38 0%, #23204d 100%);
@@ -512,30 +614,34 @@
 
 /* Static Info Styling */
 .ai-static-info {
-  color: var(--text-color-primary);
+  color: rgba(255, 255, 255, 0.9);
   padding: 15px;
+  font-family: 'Inter', sans-serif;
 }
 
 .ai-static-info h3 {
   font-size: 18px;
   margin-top: 0;
   margin-bottom: 12px;
-  color: var(--ai-primary-color);
+  color: #A78BFA;
   font-weight: 600;
+  font-family: 'Sora', sans-serif;
 }
 
 .ai-static-info h4 {
   font-size: 15px;
   margin-top: 20px;
   margin-bottom: 10px;
-  color: var(--ai-secondary-color);
+  color: #A5B4FC;
   font-weight: 500;
+  font-family: 'Sora', sans-serif;
 }
 
 .ai-static-info p {
   margin-bottom: 15px;
   line-height: 1.5;
   font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .ai-static-info ul {
@@ -549,21 +655,33 @@
   font-size: 14px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .ai-static-info i {
-  color: var(--ai-secondary-color);
+  color: #A5B4FC;
   font-size: 16px;
+  flex-shrink: 0;
 }
 
 .ai-static-info a {
-  color: var(--ai-link-color);
+  color: #93C5FD;
   text-decoration: none;
+  transition: color 0.2s;
 }
 
 .ai-static-info a:hover {
   text-decoration: underline;
+  color: #BFDBFE;
+}
+
+/* Ensure the same styling for both Context and Challenges tabs */
+.ai-tab-content[data-tab="context"] .ai-static-info,
+.ai-tab-content[data-tab="challenges"] .ai-static-info {
+  display: block;
+  opacity: 1;
+  visibility: visible;
 }
 
 /* Feedback component styles */

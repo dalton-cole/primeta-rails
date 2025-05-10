@@ -89,8 +89,8 @@ export default class extends Controller {
       
       // If it's a traditional file link in the file tree
       if (fileLink.tagName === 'A') {
-        fileLink.classList.add('current-file');
-        fileLink.classList.add('viewed-file'); // Also mark as viewed
+      fileLink.classList.add('current-file');
+      fileLink.classList.add('viewed-file'); // Also mark as viewed
       }
       
       // Handle key file items (both in key files tab and in concept files)

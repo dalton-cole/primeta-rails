@@ -12,4 +12,9 @@ module ApplicationHelper
       "#{minutes} min"
     end
   end
+
+  # Helper method to return the GitHub authentication path
+  def user_github_omniauth_authorize_path
+    Rails.application.routes.url_helpers.user_github_omniauth_authorize_path
+  end
 end

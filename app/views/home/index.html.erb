@@ -26,11 +26,16 @@
           </div>
           <div class="browser-content">
             <div class="file-tree">
-              <div class="folder">app/</div>
-              <div class="folder active">controllers/</div>
+              <div class="folder">app</div>
+              <div class="folder active">controllers</div>
               <div class="file">application_controller.rb</div>
               <div class="file active">users_controller.rb</div>
               <div class="file">posts_controller.rb</div>
+              <div class="file">comments_controller.rb</div>
+              <div class="folder">models</div>
+              <div class="folder">views</div>
+              <div class="folder">helpers</div>
+              <div class="folder">assets</div>
             </div>
             <div class="code-view">
               <pre><code>class UsersController < ApplicationController
@@ -46,7 +51,17 @@
     end
   end
   
-  # More controller code...
+  def index
+    @users = User.all.order(created_at: :desc)
+    
+    if params[:search].present?
+      @users = @users.where("name LIKE ? OR email LIKE ?", 
+                           "%#{params[:search]}%", 
+                           "%#{params[:search]}%")
+    end
+    
+    @users = @users.page(params[:page]).per(20)
+  end
 </code></pre>
             </div>
           </div>
@@ -119,10 +134,6 @@
             <div class="primeta-feature">
               <h3>Learning Challenges</h3>
               <p>Test your understanding with engaging challenges that reinforce key concepts found in the code.</p>
-            </div>
-            <div class="primeta-feature">
-              <h3>Conceptual Visualizations</h3>
-              <p>See how code components fit together with clear visual representations of complex architectural patterns.</p>
             </div>
           </div>
         </div>
@@ -310,20 +321,31 @@
   }
   
   .folder, .file {
-    padding: 0.3rem 0;
+    padding: 0.4rem 0;
     cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.25rem;
+    border-radius: 4px;
   }
   
+  .folder:hover, .file:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Remove emoji icons and rely on Font Awesome */
   .folder::before {
-    content: "📁 ";
+    content: none;
   }
   
   .file::before {
-    content: "📄 ";
+    content: none;
   }
   
   .folder.active, .file.active {
     color: var(--primary-color);
+    background-color: rgba(99, 102, 241, 0.1);
   }
   
   .code-view {
@@ -339,6 +361,62 @@
     font-family: monospace;
     font-size: 0.9rem;
     line-height: 1.5;
+  }
+  
+  /* Make sure font awesome is used for icons */
+  .browser-content .folder {
+    padding-left: 2.25rem;
+    padding-right: 0.5rem;
+  }
+  
+  .browser-content .folder:before {
+    content: "\f0da"; /* caret right */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    font-size: 0.8rem;
+    color: var(--primary-light-purple, #A78BFA);
+    width: 16px;
+    text-align: center;
+    display: inline-block;
+    position: absolute;
+    left: 0.4rem;
+  }
+  
+  .browser-content .folder:after {
+    content: "\f07b"; /* folder icon */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    color: var(--primary-light-purple, #A78BFA);
+    display: inline-block;
+    position: absolute;
+    left: 1.2rem;
+  }
+  
+  .browser-content .folder.active:before {
+    transform: rotate(90deg);
+  }
+  
+  .browser-content .folder.active:after {
+    content: "\f07c"; /* open folder icon */
+  }
+  
+  .browser-content .file {
+    padding-left: 2.25rem;
+    padding-right: 0.5rem;
+  }
+  
+  .browser-content .file:before {
+    content: "\f15b"; /* file icon */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 400;
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
+    display: inline-block;
+    position: absolute;
+    left: 1.2rem;
+  }
+  
+  .browser-content .file.active:before {
+    color: var(--primary-color);
   }
   
   /* Features Section */

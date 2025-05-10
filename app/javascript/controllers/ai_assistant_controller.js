@@ -7,6 +7,7 @@ export default class extends Controller {
     filePath: String,
     currentRepository: Boolean,
     staticInfo: Boolean,
+    repositoryNoFile: Boolean,
     isAdmin: Boolean
   }
   
@@ -26,14 +27,27 @@ export default class extends Controller {
     
     // Don't try to load context if we don't have both repository ID and file path
     this.contextLoaded = false
+    this.challengesLoaded = false
     
     // For static info pages, we already have the content loaded
     if (this.hasStaticInfoValue && this.staticInfoValue) {
       this.contextLoaded = true
+      this.challengesLoaded = true
       // Hide loading indicator immediately for static content
       if (this.hasLoadingIndicatorTarget) {
         this.hideLoadingIndicator();
       }
+      
+      // Ensure static content is preserved in both tabs
+      this._preserveStaticContent();
+      
+      // Add a delayed check to make sure static content is still intact after any potential race conditions
+      setTimeout(() => {
+        if (this.hasStaticInfoValue && this.staticInfoValue) {
+          console.log("🔍 AI Assistant: Running delayed static content preservation check");
+          this._preserveStaticContent();
+        }
+      }, 500);
     }
     
     // Listen for page changes (for Turbo navigation)
@@ -70,6 +84,13 @@ export default class extends Controller {
       this.fileObserver.disconnect();
       this.fileObserver = null;
     }
+    
+    // Disconnect the static content observer if it exists
+    if (this._staticContentObserver) {
+      console.log("🔍 AI Assistant: Disconnecting static content observer");
+      this._staticContentObserver.disconnect();
+      this._staticContentObserver = null;
+    }
   }
   
   checkForFileData() {
@@ -80,8 +101,15 @@ export default class extends Controller {
     if (this.hasRepositoryIdValue && this.hasFilePathValue) {
       console.log("🔍 AI Assistant: File data is available");
       
+      // If a file path is set, we're no longer on a repository guide page
+      if (this.hasRepositoryNoFileValue) {
+        console.log("🔍 AI Assistant: File selected, turning off repository-no-file mode");
+        this.repositoryNoFileValue = false;
+      }
+      
       // Reset context loaded flag when new file is loaded
       this.contextLoaded = false;
+      this.challengesLoaded = false;
       
       // Automatically fetch context for the new file
       this.fetchFileContext();
@@ -90,6 +118,12 @@ export default class extends Controller {
       if (this.collapsed) {
         this.collapsed = false;
         this.updateVisibility();
+      }
+    } else if (this.hasRepositoryIdValue && !this.hasFilePathValue) {
+      // We're on a repository page but no file is selected
+      if (!this.hasRepositoryNoFileValue) {
+        console.log("🔍 AI Assistant: Repository page with no file, enabling repository-no-file mode");
+        this.repositoryNoFileValue = true;
       }
     }
   }
@@ -132,10 +166,27 @@ export default class extends Controller {
   loadContextIfNeeded() {
     console.log("🔍 AI Assistant: loadContextIfNeeded called");
     
-    // For static information pages, just hide the loading indicator
-    if (this.hasStaticInfoValue && this.staticInfoValue) {
+    // Special handling for repository guide pages (repository with no file selected)
+    if (this.hasRepositoryNoFileValue && this.repositoryNoFileValue) {
+      console.log("🔍 AI Assistant: On repository guide page, no need to load context");
       if (this.hasLoadingIndicatorTarget) {
         this.hideLoadingIndicator();
+      }
+      return;
+    }
+    
+    // For static information pages, just hide the loading indicator and preserve content
+    if (this.hasStaticInfoValue && this.staticInfoValue) {
+      console.log("🔍 AI Assistant: On static info page, preserving content");
+      if (this.hasLoadingIndicatorTarget) {
+        this.hideLoadingIndicator();
+      }
+      
+      // Ensure static content is preserved by restoring from backup if needed
+      if (this._staticContextContent && this.hasContextContentTarget && 
+          this.contextContentTarget.textContent.includes("Please select a file first")) {
+        console.log("🔍 AI Assistant: Restoring static context content in loadContextIfNeeded");
+        this.contextContentTarget.innerHTML = this._staticContextContent;
       }
       return;
     }
@@ -188,12 +239,30 @@ export default class extends Controller {
   fetchFileContext(forceRefresh = false) {
     console.log("🔍 AI Assistant - Fetching context from API");
     
+    // Check for repository guide page
+    if (this.hasRepositoryNoFileValue && this.repositoryNoFileValue) {
+      console.log("🔍 AI Assistant - On repository guide page, skipping file context fetch");
+      if (this.hasLoadingIndicatorTarget) {
+        this.hideLoadingIndicator();
+      }
+      return;
+    }
+    
+    // Always check first if we're on a static info page and exit early if so
+    if (this.hasStaticInfoValue && this.staticInfoValue) {
+      console.log("🔍 AI Assistant - On static info page, skipping file context fetch");
+      if (this.hasLoadingIndicatorTarget) {
+        this.hideLoadingIndicator();
+      }
+      return;
+    }
+    
     // Don't proceed if we don't have the required data
     if (!this.hasRepositoryIdValue || !this.hasFilePathValue) {
       console.log("🔍 AI Assistant - Missing required values for API call:",
         { hasRepositoryId: this.hasRepositoryIdValue, hasFilePath: this.hasFilePathValue });
       
-      if (this.hasContextContentTarget) {
+      if (this.hasContextContentTarget && !this.hasStaticInfoValue) {
         this.contextContentTarget.innerHTML = "<p class='error'>Please select a file first to get context.</p>";
       }
       
@@ -440,6 +509,15 @@ export default class extends Controller {
   filePathValueChanged() {
     console.log("🔍 AI Assistant - File path changed:", this.filePathValue);
     this.contextLoaded = false;
+    this.challengesLoaded = false;
+    
+    // If a file path is set, we're no longer on a repository guide page
+    if (this.filePathValue) {
+      console.log("🔍 AI Assistant - File selected, turning off repository-no-file mode");
+      if (this.hasRepositoryNoFileValue) {
+        this.repositoryNoFileValue = false;
+      }
+    }
   }
   
   // Listen for custom events when a file is selected in the Monaco editor
@@ -460,7 +538,15 @@ export default class extends Controller {
               // Add a small delay to let the other controller do its work first
               setTimeout(() => {
                 this.filePathValue = filePath;
+                
+                // If a file is selected, we're no longer on a repository guide page
+                if (this.hasRepositoryNoFileValue) {
+                  console.log("🔍 AI Assistant: File selected via click, turning off repository-no-file mode");
+                  this.repositoryNoFileValue = false;
+                }
+                
                 this.contextLoaded = false;
+                this.challengesLoaded = false;
                 this.fetchFileContext();
                 
                 if (this.collapsed) {
@@ -482,8 +568,15 @@ export default class extends Controller {
         this.filePathValue = event.detail.filePath;
         console.log("🔍 AI Assistant: Updated file path to", this.filePathValue);
         
+        // If a file is selected, we're no longer on a repository guide page
+        if (this.hasRepositoryNoFileValue) {
+          console.log("🔍 AI Assistant: File selected via Monaco, turning off repository-no-file mode");
+          this.repositoryNoFileValue = false;
+        }
+        
         // Load context for the selected file
         this.contextLoaded = false;
+        this.challengesLoaded = false;
         this.fetchFileContext();
         
         // Auto-open the panel
@@ -615,12 +708,44 @@ export default class extends Controller {
       }
     });
     
-    // If we're on a page with static info, we don't need to load any dynamic content
+    // Special handling for repository guide pages (repository with no file selected)
+    if (this.hasRepositoryNoFileValue && this.repositoryNoFileValue) {
+      console.log("🔍 AI Assistant: On repository guide page, preserving content");
+      
+      // Check if current tab has repository guide flag
+      const currentTab = document.querySelector(`.ai-tab-content[data-tab="${tabName}"]`);
+      if (currentTab && currentTab.dataset.isRepositoryGuide === "true") {
+        console.log("🔍 AI Assistant: Current tab is a repository guide tab");
+        // No need to load anything, the content is already in the HTML
+        return;
+      }
+    }
+    
+    // If we're on a page with static info, we just need to ensure the correct tab content is shown
     if (this.hasStaticInfoValue && this.staticInfoValue) {
+      // Make sure static content in both tabs is preserved
+      if (this.hasContextContentTarget && this.hasChallengesContentTarget) {
+        // We don't need to load anything, just make sure both tabs have their static info
+        console.log("🔍 AI Assistant - On static info page, preserving tab content");
+        
+        // If we're on the context tab and it has an error message, restore the static content
+        if (tabName === 'context' && this._staticContextContent && 
+            this.contextContentTarget.textContent.includes("Please select a file first")) {
+          console.log("🔍 AI Assistant: Restoring static context content in switchTab");
+          this.contextContentTarget.innerHTML = this._staticContextContent;
+        }
+        
+        // If we're on the challenges tab and it has an error message, restore the static content
+        if (tabName === 'challenges' && this._staticChallengesContent && 
+            this.challengesContentTarget.textContent.includes("Please select a file first")) {
+          console.log("🔍 AI Assistant: Restoring static challenges content in switchTab");
+          this.challengesContentTarget.innerHTML = this._staticChallengesContent;
+        }
+      }
       return;
     }
     
-    // Load content for the selected tab if needed
+    // For repository pages with file selected, load appropriate content
     if (tabName === 'context') {
       this.loadContextIfNeeded();
     } else if (tabName === 'challenges') {
@@ -633,12 +758,30 @@ export default class extends Controller {
   fetchLearningChallenges(forceRefresh = false) {
     console.log("🔍 AI Assistant - Fetching learning challenges from API");
     
+    // Check for repository guide page
+    if (this.hasRepositoryNoFileValue && this.repositoryNoFileValue) {
+      console.log("🔍 AI Assistant - On repository guide page, skipping learning challenges fetch");
+      if (this.hasLoadingIndicatorTarget) {
+        this.hideLoadingIndicator();
+      }
+      return;
+    }
+    
+    // Always check first if we're on a static info page and exit early if so
+    if (this.hasStaticInfoValue && this.staticInfoValue) {
+      console.log("🔍 AI Assistant - On static info page, skipping learning challenges fetch");
+      if (this.hasLoadingIndicatorTarget) {
+        this.hideLoadingIndicator();
+      }
+      return;
+    }
+    
     // Don't proceed if we don't have the required data
     if (!this.hasRepositoryIdValue || !this.hasFilePathValue) {
       console.log("🔍 AI Assistant - Missing required values for API call:",
         { hasRepositoryId: this.hasRepositoryIdValue, hasFilePath: this.hasFilePathValue });
       
-      if (this.hasChallengesContentTarget) {
+      if (this.hasChallengesContentTarget && !this.hasStaticInfoValue) {
         this.challengesContentTarget.innerHTML = "<p class='error'>Please select a file first to get learning challenges.</p>";
       }
       
@@ -1004,5 +1147,85 @@ export default class extends Controller {
         </div>
       `;
     }
+  }
+  
+  // Helper method to ensure static content is preserved when switching tabs
+  _preserveStaticContent() {
+    // Only needed for static content pages
+    if (!this.hasStaticInfoValue || !this.staticInfoValue) return;
+    
+    console.log("🔍 AI Assistant: Setting up static content preservation");
+    
+    // Make sure both tabs are initialized with their content
+    if (this.hasContextContentTarget && this.hasChallengesContentTarget) {
+      // Save references to the static content in each tab if not already saved
+      if (!this._staticContextContent) {
+        console.log("🔍 AI Assistant: Saving static context content");
+        this._staticContextContent = this.contextContentTarget.innerHTML;
+      }
+      
+      if (!this._staticChallengesContent) {
+        console.log("🔍 AI Assistant: Saving static challenges content");
+        this._staticChallengesContent = this.challengesContentTarget.innerHTML;
+      }
+      
+      // Immediately restore if either tab contains an error message
+      if (this.contextContentTarget.textContent.includes("Please select a file first")) {
+        console.log("🔍 AI Assistant: Found error in context tab, restoring");
+        this.contextContentTarget.innerHTML = this._staticContextContent;
+      }
+      
+      if (this.challengesContentTarget.textContent.includes("Please select a file first")) {
+        console.log("🔍 AI Assistant: Found error in challenges tab, restoring");
+        this.challengesContentTarget.innerHTML = this._staticChallengesContent;
+      }
+      
+      // Add a mutation observer to restore content if it gets removed
+      this._setupStaticContentObserver();
+    }
+  }
+  
+  // Set up observer to ensure static content isn't lost when switching tabs
+  _setupStaticContentObserver() {
+    if (!this._staticContextContent || !this._staticChallengesContent) return;
+    
+    // Observe the AI assistant content container for changes
+    const observer = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        // Check if any of our tab content was modified
+        if (mutation.type === 'childList' && mutation.target.classList.contains('ai-tab-content')) {
+          // If context tab is empty but should have static content, restore it
+          if (
+            this.hasContextContentTarget && 
+            this.contextContentTarget.innerHTML.trim() === '' && 
+            this._staticContextContent
+          ) {
+            console.log("🔍 AI Assistant: Restoring static context content");
+            this.contextContentTarget.innerHTML = this._staticContextContent;
+          }
+          
+          // If challenges tab is empty but should have static content, restore it
+          if (
+            this.hasChallengesContentTarget && 
+            this.challengesContentTarget.innerHTML.trim() === '' && 
+            this._staticChallengesContent
+          ) {
+            console.log("🔍 AI Assistant: Restoring static challenges content");
+            this.challengesContentTarget.innerHTML = this._staticChallengesContent;
+          }
+        }
+      });
+    });
+    
+    // Start observing both tabs
+    if (this.hasContextContentTarget) {
+      observer.observe(this.contextContentTarget, { childList: true, subtree: true });
+    }
+    if (this.hasChallengesContentTarget) {
+      observer.observe(this.challengesContentTarget, { childList: true, subtree: true });
+    }
+    
+    // Store observer so we can disconnect later if needed
+    this._staticContentObserver = observer;
   }
 } 

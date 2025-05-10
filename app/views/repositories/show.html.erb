@@ -5,9 +5,9 @@
     </div>
     <div class="actions">
       <% if user_signed_in? %>
-        <div class="user-menu compact">
-          <span class="user-name" onclick="this.closest('.user-menu').classList.toggle('active'); event.preventDefault(); event.stopPropagation(); return false;"><%= current_user.name || current_user.email %></span>
-          <div class="dropdown-menu">
+        <div class="user-menu compact" data-controller="dropdown">
+          <span class="user-name" data-action="click->dropdown#toggle"><%= current_user.name || current_user.email %></span>
+          <div class="dropdown-menu" data-dropdown-target="menu">
             <%= link_to "Profile", my_profile_path %>
             <%= link_to "Settings", edit_user_registration_path %>
             <%= button_to "Sign Out", destroy_user_session_path, method: :delete %>
@@ -270,7 +270,12 @@
           // Update caret icon
           const caretIcon = this.querySelector('.fa-caret-right');
           if (caretIcon) {
-            caretIcon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(90deg)';
+            // Set the transform explicitly in both cases
+            if (isExpanded) {
+              caretIcon.style.transform = 'rotate(0deg)';
+            } else {
+              caretIcon.style.transform = 'rotate(90deg)';
+            }
           }
           
           // Toggle content visibility
@@ -424,56 +429,6 @@
         }
       }, 300);
     });
-    
-    // Improved dropdown functionality
-    const setupDropdown = () => {
-      const userNameElement = document.querySelector('.user-menu.compact .user-name');
-      
-      if (userNameElement) {
-        // Clear any existing listeners to prevent duplicates
-        const newUserNameElement = userNameElement.cloneNode(true);
-        userNameElement.parentNode.replaceChild(newUserNameElement, userNameElement);
-        
-        // Add click listener to user name with improved handling
-        newUserNameElement.addEventListener('click', function(event) {
-          event.preventDefault();
-          event.stopPropagation();
-          
-          // Toggle active class on parent
-          const userMenu = this.closest('.user-menu');
-          userMenu.classList.toggle('active');
-          
-          // Focus trap for keyboard navigation
-          if (userMenu.classList.contains('active')) {
-            const firstFocusableElement = userMenu.querySelector('a, button');
-            if (firstFocusableElement) {
-              setTimeout(() => firstFocusableElement.focus(), 10);
-            }
-          }
-        });
-      }
-      
-      // Document click to close dropdown when clicking outside
-      document.addEventListener('click', function(event) {
-        const userMenu = document.querySelector('.user-menu.compact');
-        if (userMenu && !userMenu.contains(event.target)) {
-          userMenu.classList.remove('active');
-        }
-      });
-      
-      // Close dropdown on ESC key
-      document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-          const userMenu = document.querySelector('.user-menu.compact');
-          if (userMenu) {
-            userMenu.classList.remove('active');
-          }
-        }
-      });
-    };
-    
-    // Initial setup
-    setupDropdown();
     
     // Handle URL hash for file navigation
     setTimeout(() => {

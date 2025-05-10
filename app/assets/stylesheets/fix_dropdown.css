@@ -1,0 +1,38 @@
+/* Dropdown Menu Fixes */
+
+/* User menu in navbar */
+.main-header .user-menu .dropdown-menu.show {
+  display: block;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* User menu in repository page */
+.user-menu.compact .dropdown-menu.show {
+  display: block;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+/* Remove hover behavior */
+.user-menu:hover .dropdown-menu {
+  display: none;
+}
+
+.user-menu:hover .dropdown-menu.show {
+  display: block;
+}
+
+/* Z-index fixes */
+.dropdown-menu {
+  z-index: 1000 !important;
+}
+
+.user-menu {
+  position: relative;
+  z-index: 1000;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+} 

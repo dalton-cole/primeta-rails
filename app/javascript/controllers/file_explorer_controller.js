@@ -17,6 +17,9 @@ export default class extends Controller {
       }
     });
     
+    // Initialize all caret rotations
+    this.initializeCarets();
+    
     // Set up event listeners for directory headers
     this.dirHeaderTargets.forEach(header => {
       header.addEventListener("click", (event) => this.toggleDirectory(event));
@@ -32,6 +35,17 @@ export default class extends Controller {
     
     // Observe size changes to handle scrolling properly
     this.setupResizeObserver();
+  }
+  
+  // Initialize all carets based on expanded state
+  initializeCarets() {
+    this.dirHeaderTargets.forEach(header => {
+      const isExpanded = header.classList.contains('expanded');
+      const caretIcon = header.querySelector('.fa-caret-right');
+      if (caretIcon) {
+        caretIcon.style.transform = isExpanded ? 'rotate(90deg)' : 'rotate(0deg)';
+      }
+    });
   }
   
   // Setup a resize observer to adjust scrolling when content changes
@@ -60,6 +74,8 @@ export default class extends Controller {
     event.preventDefault();
     event.stopPropagation();
     
+    console.log("📁 Directory clicked");
+    
     // Find the directory container and header
     const header = event.currentTarget;
     const directory = header.closest(".directory");
@@ -76,41 +92,60 @@ export default class extends Controller {
       return;
     }
     
+    // Log initial state of directory
+    console.log("📁 Directory initial state:", {
+      hasExpandedClass: directory.classList.contains("expanded"),
+      headerHasExpandedClass: header.classList.contains("expanded"),
+      contentsDisplayStyle: dirContents.style.display
+    });
+    
     // Toggle expanded state
     const isExpanded = !directory.classList.contains("expanded");
+    
+    // Toggle the expanded class on both the directory and header
     directory.classList.toggle("expanded", isExpanded);
     header.classList.toggle("expanded", isExpanded);
     
+    // Log after toggling classes
+    console.log("📁 Directory after class toggle:", {
+      isExpanded: isExpanded,
+      hasExpandedClass: directory.classList.contains("expanded"),
+      headerHasExpandedClass: header.classList.contains("expanded")
+    });
+    
     // Toggle display of directory contents
     if (isExpanded) {
-      // First make it visible
+      // Simply display content without animations
       dirContents.style.display = 'block';
-      dirContents.style.opacity = '1';
       
       // Clear any inline max-height to let it expand naturally
       dirContents.style.maxHeight = 'none';
       
+      // Log expanded state
+      console.log("📁 Directory expanded, display:", dirContents.style.display);
+      
       // Ensure parent container scrolls to accommodate new content
       this.updateScrollContainer();
     } else {
-      // Collapse the directory
-      dirContents.style.opacity = '0';
+      // Immediately hide when collapsed, no animations
+      dirContents.style.display = 'none';
       
-      // Wait for animation before hiding
-      setTimeout(() => {
-        if (!directory.classList.contains('expanded')) {
-          dirContents.style.display = 'none';
-          
-          // Update scroll container after hiding content
-          this.updateScrollContainer();
-        }
-      }, 300);
+      // Log collapsed state
+      console.log("📁 Directory collapsed, display:", dirContents.style.display);
+      
+      // Update scroll container after hiding content
+      this.updateScrollContainer();
     }
     
-    // Update caret icon
+    // Update caret icon explicitly to ensure it rotates correctly
     const caretIcon = header.querySelector('.fa-caret-right');
     if (caretIcon) {
-      caretIcon.style.transform = isExpanded ? 'rotate(90deg)' : 'rotate(0)';
+      // Use CSS transform instead of inline style for better performance
+      // The CSS classes will handle the rotation
+      console.log("📁 Setting caret rotation for state:", isExpanded ? "expanded" : "collapsed");
+      
+      // Force a reflow to make sure the CSS transition happens
+      void caretIcon.offsetWidth;
     }
   }
   
@@ -193,5 +228,8 @@ export default class extends Controller {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }
+    
+    // Clean up event listener
+    document.removeEventListener("expand-to-file", this.expandToFile);
   }
 } 

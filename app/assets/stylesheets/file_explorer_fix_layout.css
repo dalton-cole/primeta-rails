@@ -1,0 +1,110 @@
+/* File Explorer Layout Fixes */
+
+/* Reset browser default spacing */
+.file-explorer, .file-tree, .directory, .directory-children, .file-item {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Proper padding for children only */
+.directory-children {
+  padding-left: 1.5rem !important;
+  margin-top: 0.25rem !important;
+}
+
+/* File item positioning */
+.file-item {
+  clear: both;
+  display: block;
+  width: 100%;
+  padding: 0.1rem 0;
+}
+
+/* Directory positioning */
+.directory {
+  clear: both;
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+
+/* Force expanded directories to take appropriate space */
+.directory.expanded {
+  height: auto !important;
+  overflow: visible !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Make sure the tree flows properly vertically */
+.file-tree {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: relative;
+}
+
+/* Fix sidebar layout */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sidebar h3 {
+  flex-shrink: 0;
+}
+
+/* Ensure proper scrolling */
+.file-explorer {
+  flex: 1;
+  overflow-y: auto !important;
+  height: calc(100% - 50px) !important;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Better visibility of active elements */
+.directory.expanded > .directory-label {
+  font-weight: 500;
+}
+
+/* Add spacing for deeper nested elements */
+.directory-children .directory-children {
+  padding-left: 1rem !important;
+}
+
+/* Fix z-index issues */
+.directory-label {
+  position: relative;
+  z-index: 2;
+}
+
+.directory-children {
+  position: relative;
+  z-index: 1;
+}
+
+/* Fix for empty folders */
+.directory-children:empty {
+  display: none !important;
+}
+
+/* Clear floats if any */
+.file-tree::after,
+.directory::after,
+.directory-children::after,
+.file-item::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Force any absolute positioned elements to stay in flow */
+.file-tree *,
+.directory *,
+.directory-children *,
+.file-item * {
+  position: relative;
+} 

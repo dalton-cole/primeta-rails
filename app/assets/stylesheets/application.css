@@ -2,16 +2,25 @@
  * This is a manifest file that'll be compiled into application.css, which will include all the files
  * listed below.
  *
- * Any CSS (and SCSS, if configured) file within this directory, lib/assets/stylesheets, or any plugin's
- * vendor/assets/stylesheets directory can be referenced here using a relative path.
+ * Any CSS (and SCSS, if configured) file within this directory or any subdirectory
+ * of this directory, or vendor/assets/stylesheets of plugins, if any, can be
+ * referenced here using a relative path.
  *
- * You're free to add application-wide styles to this file and they'll appear at the bottom of the
- * compiled file so the styles you add here take precedence over styles defined in any other CSS
- * files in this directory. Styles in this file should be added after the last require_* statement.
- * It is generally better to create a new file per style scope.
+ * You're free to add application-wide styles to this file and they'll appear at the bottom
+ * of the compiled file so the styles you add here take precedence over styles defined in
+ * any other CSS file in this directory.
  *
- *= require_tree .
  *= require_self
+ *= require primeta_base
+ *= require primeta_forms
+ *= require primeta_navbar
+ *= require primeta_repositories
+ *= require primeta_landing
+ *= require ai_assistant
+ *= require file_explorer_fix
+ *= require file_explorer_fix_layout
+ *= require fix_dropdown
+ *= require_tree .
  */
 
 :root {
@@ -180,7 +189,9 @@ p {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.user-menu:hover .dropdown-menu {
+/* Updated dropdown display - using .show class instead of hover */
+.dropdown-menu.show,
+.user-menu.active .dropdown-menu {
   display: block;
 }
 
