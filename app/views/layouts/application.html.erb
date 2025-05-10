@@ -91,6 +91,19 @@
       <%= yield %>
     </main>
 
+    <% unless controller_name == 'repositories' && action_name == 'show' %>
+      <footer class="main-footer">
+        <div class="container">
+          <span>&copy; <%= Date.today.year %> Primeta.ai</span>
+          <span class="footer-links">
+            <%= link_to 'Terms of Service', terms_path, class: 'footer-link' %>
+            &middot;
+            <%= link_to 'Privacy Policy', privacy_path, class: 'footer-link' %>
+          </span>
+        </div>
+      </footer>
+    <% end %>
+
     <!-- Primeta -->
     <div class="ai-assistant-container" data-controller="ai-assistant"
          <% if controller_name == 'repository_files' && @repository && @repository_file %>
