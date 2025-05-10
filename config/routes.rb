@@ -5,6 +5,11 @@ Rails.application.routes.draw do
     registrations: 'users/registrations'
   }
   
+  # Admin routes
+  namespace :admin do
+    resources :feedbacks, only: [:index]
+  end
+  
   # Home controller route
   get "home/index"
   
@@ -26,6 +31,7 @@ Rails.application.routes.draw do
   resources :repository_files, only: [:show] do
     post :track_time, on: :member
     get :content, on: :member
+    post :mark_viewed, on: :member
   end
   
   # API routes
@@ -36,6 +42,8 @@ Rails.application.routes.draw do
     get '/file_related_patterns', to: 'file_context#related_patterns'
     get '/file_visualizations', to: 'file_context#visualizations'
     get '/test_gemini', to: 'file_context#test_gemini'
+    post '/submit_feedback', to: 'file_context#submit_feedback'
+    get '/check_feedback', to: 'file_context#check_feedback'
   end
   
   # Define the root path route ("/")

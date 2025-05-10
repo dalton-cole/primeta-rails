@@ -133,6 +133,34 @@ class RepositoryFilesController < ApplicationController
     }
   end
   
+  def mark_viewed
+    @repository_file = RepositoryFile.find(params[:id])
+    
+    # Record the view in FileView if not already viewed
+    unless FileView.exists?(user: current_user, repository_file: @repository_file)
+      FileView.create(
+        user: current_user,
+        repository_file: @repository_file,
+        repository: @repository_file.repository,
+        view_duration: 1 # Minimal duration just to mark as viewed
+      )
+    end
+    
+    # Set @repository for the view templates
+    @repository = @repository_file.repository
+    
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "file_#{@repository_file.id}_status", 
+          partial: "repositories/key_file_item", 
+          locals: { file: @repository_file, viewed: true }
+        )
+      end
+      format.json { head :ok }
+    end
+  end
+  
   private
   
   def set_repository_file

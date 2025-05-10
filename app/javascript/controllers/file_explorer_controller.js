@@ -2,93 +2,196 @@ import { Controller } from "@hotwired/stimulus";
 
 // Connects to data-controller="file-explorer"
 export default class extends Controller {
-  static targets = ["directory", "toggle", "dirHeader", "dirContents"];
+  static targets = ["directory", "dirHeader", "dirContents"];
 
   connect() {
-    // Set up initial state
-    this.setupInitialState();
+    console.log("File explorer controller connected");
     
-    // Add event listeners
-    this.dirHeaderTargets.forEach(header => {
-      header.addEventListener("click", this.toggleDirectory.bind(this));
+    // Ensure all directories start collapsed
+    this.directoryTargets.forEach(directory => {
+      if (!directory.classList.contains('expanded')) {
+        const dirContents = directory.querySelector('.directory-children');
+        if (dirContents) {
+          dirContents.style.display = 'none';
+        }
+      }
     });
     
-    // Listen for a custom event to expand directories to a specific file
+    // Set up event listeners for directory headers
+    this.dirHeaderTargets.forEach(header => {
+      header.addEventListener("click", (event) => this.toggleDirectory(event));
+    });
+    
+    // Listen for custom event to expand directories to a specific file
     document.addEventListener("expand-to-file", (event) => {
       const filePath = event.detail.path;
       if (filePath) {
         this.expandToFile(filePath);
       }
     });
+    
+    // Observe size changes to handle scrolling properly
+    this.setupResizeObserver();
   }
   
-  setupInitialState() {
-    // Ensure all directory toggles have correct initial content
-    this.toggleTargets.forEach(toggle => {
-      if (!toggle.textContent.trim()) {
-        toggle.textContent = "+";
+  // Setup a resize observer to adjust scrolling when content changes
+  setupResizeObserver() {
+    if (typeof ResizeObserver !== 'undefined') {
+      const fileExplorer = this.element;
+      
+      // Create a resize observer to handle content changes
+      this.resizeObserver = new ResizeObserver(entries => {
+        // After content changes, ensure scrollbar reflects new content
+        fileExplorer.style.overflow = 'hidden';
+        setTimeout(() => {
+          fileExplorer.style.overflow = 'auto';
+        }, 0);
+      });
+      
+      // Start observing the file tree
+      const fileTree = fileExplorer.querySelector('.file-tree');
+      if (fileTree) {
+        this.resizeObserver.observe(fileTree);
       }
-    });
+    }
   }
   
   toggleDirectory(event) {
-    // Find the directory item
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Find the directory container and header
     const header = event.currentTarget;
-    const dirItem = header.closest(".dir-item");
+    const directory = header.closest(".directory");
     
-    // Toggle expanded state
-    const isExpanded = dirItem.classList.toggle("expanded");
-    
-    // Update toggle content
-    const toggle = header.querySelector(".dir-toggle");
-    if (toggle) {
-      toggle.textContent = isExpanded ? "-" : "+";
+    if (!directory) {
+      console.error("Could not find parent directory element");
+      return;
     }
     
-    // Prevent event from bubbling to parent directories
-    event.stopPropagation();
+    // Get the directory contents
+    const dirContents = directory.querySelector('.directory-children');
+    if (!dirContents) {
+      console.error("Could not find directory contents element");
+      return;
+    }
+    
+    // Toggle expanded state
+    const isExpanded = !directory.classList.contains("expanded");
+    directory.classList.toggle("expanded", isExpanded);
+    header.classList.toggle("expanded", isExpanded);
+    
+    // Toggle display of directory contents
+    if (isExpanded) {
+      // First make it visible
+      dirContents.style.display = 'block';
+      dirContents.style.opacity = '1';
+      
+      // Clear any inline max-height to let it expand naturally
+      dirContents.style.maxHeight = 'none';
+      
+      // Ensure parent container scrolls to accommodate new content
+      this.updateScrollContainer();
+    } else {
+      // Collapse the directory
+      dirContents.style.opacity = '0';
+      
+      // Wait for animation before hiding
+      setTimeout(() => {
+        if (!directory.classList.contains('expanded')) {
+          dirContents.style.display = 'none';
+          
+          // Update scroll container after hiding content
+          this.updateScrollContainer();
+        }
+      }, 300);
+    }
+    
+    // Update caret icon
+    const caretIcon = header.querySelector('.fa-caret-right');
+    if (caretIcon) {
+      caretIcon.style.transform = isExpanded ? 'rotate(90deg)' : 'rotate(0)';
+    }
+  }
+  
+  // Helper to update the scroll container after content changes
+  updateScrollContainer() {
+    const fileExplorer = this.element;
+    if (fileExplorer) {
+      // Force recalculation of scrollable area
+      requestAnimationFrame(() => {
+        // Toggle overflow to recalculate scrollbars
+        const currentOverflow = fileExplorer.style.overflow;
+        fileExplorer.style.overflow = 'hidden';
+        
+        // Force reflow
+        void fileExplorer.offsetHeight;
+        
+        // Restore overflow
+        fileExplorer.style.overflow = currentOverflow || 'auto';
+      });
+    }
   }
   
   expandToFile(filePath) {
     if (!filePath) return;
+    
+    console.log(`Expanding to file: ${filePath}`);
     
     // Split the path into directories
     const parts = filePath.split('/');
     
     // Start with an empty path
     let currentPath = '';
+    let expandedAnyDirectory = false;
     
     // Expand each directory in the path
     for (let i = 0; i < parts.length - 1; i++) {
       currentPath += (i > 0 ? '/' : '') + parts[i];
       
-      // Find the directory item with this path
-      const dirItem = this.findDirectoryByPath(currentPath);
-      if (dirItem) {
-        // Expand this directory
-        dirItem.classList.add('expanded');
-        const toggle = dirItem.querySelector('.dir-toggle');
-        if (toggle) {
-          toggle.textContent = "-";
+      // Find the directory with this path
+      const dirLabel = this.element.querySelector(`.directory-label[data-path="${currentPath}"]`);
+      
+      if (dirLabel) {
+        const directory = dirLabel.closest('.directory');
+        
+        // Only expand if not already expanded
+        if (directory && !directory.classList.contains('expanded')) {
+          // Manually trigger the click event to expand
+          dirLabel.click();
+          expandedAnyDirectory = true;
+        }
+        
+        // Add active path highlight
+        if (directory) {
+          directory.classList.add('directory-path-active');
         }
       }
     }
+    
+    // After expanding directories, try to highlight the file
+    setTimeout(() => {
+      const fileLink = this.element.querySelector(`a[data-path="${filePath}"]`);
+      if (fileLink) {
+        fileLink.classList.add('highlight-file');
+        
+        // Scroll the file into view, with a slight delay to ensure expansion is complete
+        setTimeout(() => {
+          fileLink.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, expandedAnyDirectory ? 300 : 0);
+        
+        // Remove highlight after a delay
+        setTimeout(() => {
+          fileLink.classList.remove('highlight-file');
+        }, 2000);
+      }
+    }, 300);
   }
   
-  findDirectoryByPath(path) {
-    // Look through all directory items
-    for (const dirItem of this.directoryTargets) {
-      const dirHeader = dirItem.querySelector('.dir-header');
-      const dirName = dirHeader?.querySelector('.dir-name')?.textContent?.trim();
-      
-      // Get parent path from data attribute or construct it
-      const parentPath = dirItem.getAttribute('data-parent-path') || '';
-      const fullPath = parentPath ? `${parentPath}/${dirName}` : dirName;
-      
-      if (fullPath === path) {
-        return dirItem;
-      }
+  disconnect() {
+    // Clean up resize observer when controller disconnects
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
     }
-    return null;
   }
 } 

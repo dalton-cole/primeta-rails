@@ -1,12 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["panel", "content", "contextContent", "challengesContent", "patternsContent", "visualizationsContent", "loadingIndicator", "errorMessage"]
+  static targets = ["panel", "content", "contextContent", "challengesContent", "loadingIndicator", "errorMessage"]
   static values = {
     repositoryId: Number,
     filePath: String,
     currentRepository: Boolean,
-    staticInfo: Boolean
+    staticInfo: Boolean,
+    isAdmin: Boolean
   }
   
   connect() {
@@ -78,8 +79,9 @@ export default class extends Controller {
     
     if (this.hasRepositoryIdValue && this.hasFilePathValue) {
       console.log("🔍 AI Assistant: File data is available");
+      
       // Reset context loaded flag when new file is loaded
-      this.contextLoaded = false
+      this.contextLoaded = false;
       
       // Automatically fetch context for the new file
       this.fetchFileContext();
@@ -142,20 +144,20 @@ export default class extends Controller {
       console.log("🔍 AI Assistant - Repository ID:", this.repositoryIdValue);
       console.log("🔍 AI Assistant - File Path:", this.filePathValue);
       
-      // Always show loading indicator first
-      if (this.hasLoadingIndicatorTarget) {
-        console.log("🔍 AI Assistant - Showing loading indicator");
-        this.showLoadingIndicator();
-        
-        // Clear any previous content to make the loading more visible
-        if (this.hasContextContentTarget) {
-          this.contextContentTarget.innerHTML = "";
-        }
-      } else {
-        console.warn("🔍 AI Assistant - Loading indicator target not found");
-      }
-      
       if (!this.contextLoaded) {
+        // Always show loading indicator first
+        if (this.hasLoadingIndicatorTarget) {
+          console.log("🔍 AI Assistant - Showing loading indicator");
+          this.showLoadingIndicator();
+          
+          // Clear any previous content to make the loading more visible ONLY if we're loading new content
+          if (this.hasContextContentTarget && this.contextContentTarget.innerHTML.trim() === "") {
+            this.contextContentTarget.innerHTML = "";
+          }
+        } else {
+          console.warn("🔍 AI Assistant - Loading indicator target not found");
+        }
+        
         console.log("🔍 AI Assistant - Loading context...");
         this.fetchFileContext();
       } else {
@@ -183,7 +185,7 @@ export default class extends Controller {
     }
   }
   
-  fetchFileContext() {
+  fetchFileContext(forceRefresh = false) {
     console.log("🔍 AI Assistant - Fetching context from API");
     
     // Don't proceed if we don't have the required data
@@ -211,14 +213,22 @@ export default class extends Controller {
       this.errorMessageTarget.classList.add('hidden');
     }
     
+    // Save current content before potentially clearing it
+    if (this.hasContextContentTarget && !this._contextContentBackup) {
+      this._contextContentBackup = this.contextContentTarget.innerHTML;
+    }
+    
     if (this.hasContextContentTarget) {
-      // Clear existing content to make loading more obvious
-      this.contextContentTarget.innerHTML = "";
+      // Only clear content if we're loading a new file or the content is empty
+      if (!this.contextLoaded || this.contextContentTarget.innerHTML.trim() === "") {
+        this.contextContentTarget.innerHTML = "";
+      }
     }
     
     // Force a small delay to ensure the loading state is rendered
     setTimeout(() => {
-      const url = `/api/file_context?repository_id=${this.repositoryIdValue}&file_path=${encodeURIComponent(this.filePathValue)}`;
+      const refreshParam = forceRefresh ? '&refresh=true' : '';
+      const url = `/api/file_context?repository_id=${this.repositoryIdValue}&file_path=${encodeURIComponent(this.filePathValue)}${refreshParam}`;
       console.log("🔍 AI Assistant - Request URL:", url);
       
       fetch(url, {
@@ -237,13 +247,31 @@ export default class extends Controller {
       })
       .then(data => {
         console.log("🔍 AI Assistant - Received data:", data);
-        // Add refresh button
-        const refreshButton = `<div class="refresh-button"><button data-action="click->ai-assistant#refreshContext">Refresh</button></div>`;
-        this.contextContentTarget.innerHTML = this.formatExplanation(data.explanation) + refreshButton;
+        console.log("🔍 AI Assistant - Cached flag:", data.cached, "Type:", typeof data.cached);
+        
+        // Add refresh button only for admins
+        const refreshButton = this.hasIsAdminValue && this.isAdminValue ? 
+          `<div class="refresh-button"><button data-action="click->ai-assistant#refreshContext">Refresh</button></div>` : '';
+        const feedbackUI = this.createFeedbackUI('context');
+        
+        this.contextContentTarget.innerHTML = this.formatExplanation(data.explanation) + refreshButton + feedbackUI;
         this.contextLoaded = true;
+        
+        // Cache indicator has been removed but we still log whether content was cached
+        if (data.cached === true || data.cached === 'true') {
+          console.log("🔍 AI Assistant - Content loaded from cache");
+        } else {
+          console.log("🔍 AI Assistant - Fresh content loaded");
+        }
+        
+        // Clear backup after successful load
+        this._contextContentBackup = null;
         
         // Ensure loading indicator is completely hidden
         this.hideLoadingIndicator();
+        
+        // Check if user has already submitted feedback
+        this.checkExistingFeedback('context');
       })
       .catch(error => {
         console.error('Error fetching file context:', error);
@@ -251,6 +279,11 @@ export default class extends Controller {
         if (this.hasErrorMessageTarget) {
           this.errorMessageTarget.classList.remove('hidden');
           this.errorMessageTarget.textContent = 'Failed to load context. Please try again.';
+        }
+        
+        // Restore content from backup if available
+        if (this.hasContextContentTarget && this._contextContentBackup) {
+          this.contextContentTarget.innerHTML = this._contextContentBackup;
         }
         
         this.hideLoadingIndicator();
@@ -292,22 +325,110 @@ export default class extends Controller {
   
   refreshContext() {
     console.log("🔍 AI Assistant - Refreshing context");
+    // Mark as not loaded to force reload
     this.contextLoaded = false;
-    this.loadContextIfNeeded();
+    // Clear existing content to show the loading state
+    if (this.hasContextContentTarget) {
+      // Save a backup of the content in case the refresh fails
+      this._contextContentBackup = this.contextContentTarget.innerHTML;
+      // Only show loading if the tab is currently active
+      if (document.querySelector('[data-tab="context"].active')) {
+        this.contextContentTarget.innerHTML = "";
+      }
+    }
+    // Force refresh from server (bypass cache)
+    this.fetchFileContext(true);
   }
   
   formatExplanation(text) {
-    // Enhanced markdown-like formatting
-    return text
-      .replace(/\n\n/g, '<br><br>')
+    // Process text in steps for more consistent markdown-like formatting
+    
+    // Step 1: Capture multi-line code blocks first (```code```)
+    const multiLineCodeBlocks = [];
+    let processedText = text.replace(/```([\s\S]*?)```/g, (match, code) => {
+      const placeholder = `__MULTI_LINE_CODE_BLOCK_${multiLineCodeBlocks.length}__`;
+      multiLineCodeBlocks.push(code);
+      return placeholder;
+    });
+    
+    // Step 2: Capture inline code blocks (`code`)
+    const inlineCodeBlocks = [];
+    processedText = processedText.replace(/`([^`]*?)`/g, (match, code) => {
+      const placeholder = `__INLINE_CODE_BLOCK_${inlineCodeBlocks.length}__`;
+      inlineCodeBlocks.push(code);
+      return placeholder;
+    });
+    
+    // Step 3: Process headings (improved to handle all header levels)
+    processedText = processedText
+      .replace(/^#{1}\s+(.*?)$/gm, '<h1 class="ai-heading ai-h1">$1</h1>')
+      .replace(/^#{2}\s+(.*?)$/gm, '<h2 class="ai-heading ai-h2">$1</h2>')
+      .replace(/^#{3}\s+(.*?)$/gm, '<h3 class="ai-heading ai-h3">$1</h3>')
+      .replace(/^#{4}\s+(.*?)$/gm, '<h4 class="ai-heading ai-h4">$1</h4>')
+      .replace(/^#{5,6}\s+(.*?)$/gm, '<h5 class="ai-heading ai-h5">$1</h5>');
+    
+    // Step 4: Process lists properly
+    // First identify all list items
+    let listItemsFound = processedText.match(/^-\s+(.*?)$/gm);
+    if (listItemsFound) {
+      // We have list items, wrap each in <li> tags
+      processedText = processedText.replace(/^-\s+(.*?)$/gm, '<li class="ai-list-item">$1</li>');
+      
+      // Then wrap consecutive <li> elements in a single <ul>
+      // First, split by line breaks
+      const lines = processedText.split('\n');
+      let inList = false;
+      let newLines = [];
+      
+      for (const line of lines) {
+        if (line.startsWith('<li class="ai-list-item">')) {
+          if (!inList) {
+            newLines.push('<ul class="ai-list">');
+            inList = true;
+          }
+          newLines.push(line);
+        } else {
+          if (inList) {
+            newLines.push('</ul>');
+            inList = false;
+          }
+          newLines.push(line);
+        }
+      }
+      
+      // Close any remaining open list
+      if (inList) {
+        newLines.push('</ul>');
+      }
+      
+      processedText = newLines.join('\n');
+    }
+    
+    // Step 5: Process bold and italic
+    processedText = processedText
       .replace(/\*\*(.*?)\*\*/g, '<strong class="ai-bold">$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em class="ai-italic">$1</em>')
-      .replace(/`(.*?)`/g, '<code class="ai-code">$1</code>')
-      .replace(/^#\s+(.*?)$/gm, '<h3 class="ai-heading">$1</h3>')
-      .replace(/^##\s+(.*?)$/gm, '<h4 class="ai-subheading">$1</h4>')
-      .replace(/^-\s+(.*?)$/gm, '<li class="ai-list-item">$1</li>')
-      .replace(/<li class="ai-list-item">(.*?)<\/li>/gs, '<ul class="ai-list">$&</ul>')
-      .replace(/<ul class="ai-list">(<ul class="ai-list">.*?<\/ul>)<\/ul>/gs, '$1');
+      .replace(/\*(.*?)\*/g, '<em class="ai-italic">$1</em>');
+    
+    // Step 6: Restore inline code blocks
+    inlineCodeBlocks.forEach((code, index) => {
+      processedText = processedText.replace(
+        `__INLINE_CODE_BLOCK_${index}__`, 
+        `<code class="ai-code-inline">${code}</code>`
+      );
+    });
+    
+    // Step 7: Restore multi-line code blocks with proper formatting
+    multiLineCodeBlocks.forEach((code, index) => {
+      processedText = processedText.replace(
+        `__MULTI_LINE_CODE_BLOCK_${index}__`, 
+        `<pre class="ai-code-block"><code>${code}</code></pre>`
+      );
+    });
+    
+    // Step 8: Process paragraphs (convert double line breaks to paragraph breaks)
+    processedText = processedText.replace(/\n\n/g, '<br><br>');
+    
+    return processedText;
   }
   
   // Value change observers
@@ -319,9 +440,6 @@ export default class extends Controller {
   filePathValueChanged() {
     console.log("🔍 AI Assistant - File path changed:", this.filePathValue);
     this.contextLoaded = false;
-    this.challengesLoaded = false;
-    this.patternsLoaded = false;
-    this.visualizationsLoaded = false;
   }
   
   // Listen for custom events when a file is selected in the Monaco editor
@@ -485,7 +603,7 @@ export default class extends Controller {
       }
     });
     
-    // Update content visibility
+    // Update content visibility using CSS classes only, not direct styles
     const contents = document.querySelectorAll('.ai-tab-content');
     contents.forEach(content => {
       if (content.dataset.tab === tabName) {
@@ -493,7 +611,7 @@ export default class extends Controller {
         content.classList.remove('hidden');
       } else {
         content.classList.remove('active');
-        content.classList.add('hidden');
+        // Don't add hidden class, just remove active
       }
     });
     
@@ -509,18 +627,10 @@ export default class extends Controller {
       if (!this.challengesLoaded && this.hasRepositoryIdValue && this.hasFilePathValue) {
         this.fetchLearningChallenges();
       }
-    } else if (tabName === 'patterns') {
-      if (!this.patternsLoaded && this.hasRepositoryIdValue && this.hasFilePathValue) {
-        this.fetchRelatedPatterns();
-      }
-    } else if (tabName === 'visualizations') {
-      if (!this.visualizationsLoaded && this.hasRepositoryIdValue && this.hasFilePathValue) {
-        this.fetchVisualizations();
-      }
     }
   }
   
-  fetchLearningChallenges() {
+  fetchLearningChallenges(forceRefresh = false) {
     console.log("🔍 AI Assistant - Fetching learning challenges from API");
     
     // Don't proceed if we don't have the required data
@@ -548,14 +658,22 @@ export default class extends Controller {
       this.errorMessageTarget.classList.add('hidden');
     }
     
+    // Save current content before potentially clearing it
+    if (this.hasChallengesContentTarget && !this._challengesContentBackup) {
+      this._challengesContentBackup = this.challengesContentTarget.innerHTML;
+    }
+    
     if (this.hasChallengesContentTarget) {
-      // Clear existing content to make loading more obvious
-      this.challengesContentTarget.innerHTML = "";
+      // Only clear content if it's empty or not already loaded
+      if (!this.challengesLoaded || this.challengesContentTarget.innerHTML.trim() === "") {
+        this.challengesContentTarget.innerHTML = "";
+      }
     }
     
     // Force a small delay to ensure the loading state is rendered
     setTimeout(() => {
-      const url = `/api/file_learning_challenges?repository_id=${this.repositoryIdValue}&file_path=${encodeURIComponent(this.filePathValue)}`;
+      const refreshParam = forceRefresh ? '&refresh=true' : '';
+      const url = `/api/file_learning_challenges?repository_id=${this.repositoryIdValue}&file_path=${encodeURIComponent(this.filePathValue)}${refreshParam}`;
       console.log("🔍 AI Assistant - Request URL:", url);
       
       fetch(url, {
@@ -573,14 +691,32 @@ export default class extends Controller {
         return response.json();
       })
       .then(data => {
-        console.log("🔍 AI Assistant - Received learning challenges data");
-        // Add refresh button
-        const refreshButton = `<div class="refresh-button"><button data-action="click->ai-assistant#refreshChallenges">Refresh</button></div>`;
-        this.challengesContentTarget.innerHTML = this.formatExplanation(data.challenges) + refreshButton;
+        console.log("🔍 AI Assistant - Received learning challenges data:", data);
+        console.log("🔍 AI Assistant - Challenges cached flag:", data.cached, "Type:", typeof data.cached);
+        
+        // Add refresh button only for admins
+        const refreshButton = this.hasIsAdminValue && this.isAdminValue ? 
+          `<div class="refresh-button"><button data-action="click->ai-assistant#refreshChallenges">Refresh</button></div>` : '';
+        const feedbackUI = this.createFeedbackUI('challenges');
+        
+        this.challengesContentTarget.innerHTML = this.formatExplanation(data.challenges) + refreshButton + feedbackUI;
         this.challengesLoaded = true;
+        
+        // Cache indicator has been removed but we still log whether content was cached
+        if (data.cached === true || data.cached === 'true') {
+          console.log("🔍 AI Assistant - Challenges loaded from cache");
+        } else {
+          console.log("🔍 AI Assistant - Fresh challenges loaded");
+        }
+        
+        // Clear backup after successful load
+        this._challengesContentBackup = null;
         
         // Ensure loading indicator is completely hidden
         this.hideLoadingIndicator();
+        
+        // Check if user has already submitted feedback
+        this.checkExistingFeedback('challenges');
       })
       .catch(error => {
         console.error('Error fetching learning challenges:', error);
@@ -590,79 +726,9 @@ export default class extends Controller {
           this.errorMessageTarget.textContent = 'Failed to load learning challenges. Please try again.';
         }
         
-        this.hideLoadingIndicator();
-      });
-    }, 100); // Small delay to ensure UI updates
-  }
-  
-  fetchRelatedPatterns() {
-    console.log("🔍 AI Assistant - Fetching related patterns from API");
-    
-    // Don't proceed if we don't have the required data
-    if (!this.hasRepositoryIdValue || !this.hasFilePathValue) {
-      console.log("🔍 AI Assistant - Missing required values for API call:",
-        { hasRepositoryId: this.hasRepositoryIdValue, hasFilePath: this.hasFilePathValue });
-      
-      if (this.hasPatternsContentTarget) {
-        this.patternsContentTarget.innerHTML = "<p class='error'>Please select a file first to get related patterns.</p>";
-      }
-      
-      if (this.hasLoadingIndicatorTarget) {
-        this.hideLoadingIndicator();
-      }
-      
-      return;
-    }
-    
-    // Always make sure loading indicator is visible first
-    if (this.hasLoadingIndicatorTarget) {
-      this.showLoadingIndicator();
-    }
-    
-    if (this.hasErrorMessageTarget) {
-      this.errorMessageTarget.classList.add('hidden');
-    }
-    
-    if (this.hasPatternsContentTarget) {
-      // Clear existing content to make loading more obvious
-      this.patternsContentTarget.innerHTML = "";
-    }
-    
-    // Force a small delay to ensure the loading state is rendered
-    setTimeout(() => {
-      const url = `/api/file_related_patterns?repository_id=${this.repositoryIdValue}&file_path=${encodeURIComponent(this.filePathValue)}`;
-      console.log("🔍 AI Assistant - Request URL:", url);
-      
-      fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
-        }
-      })
-      .then(response => {
-        console.log("🔍 AI Assistant - Related patterns response status:", response.status);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch related patterns: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log("🔍 AI Assistant - Received related patterns data");
-        // Add refresh button
-        const refreshButton = `<div class="refresh-button"><button data-action="click->ai-assistant#refreshPatterns">Refresh</button></div>`;
-        this.patternsContentTarget.innerHTML = this.formatExplanation(data.patterns) + refreshButton;
-        this.patternsLoaded = true;
-        
-        // Ensure loading indicator is completely hidden
-        this.hideLoadingIndicator();
-      })
-      .catch(error => {
-        console.error('Error fetching related patterns:', error);
-        
-        if (this.hasErrorMessageTarget) {
-          this.errorMessageTarget.classList.remove('hidden');
-          this.errorMessageTarget.textContent = 'Failed to load related patterns. Please try again.';
+        // Restore content from backup if available
+        if (this.hasChallengesContentTarget && this._challengesContentBackup) {
+          this.challengesContentTarget.innerHTML = this._challengesContentBackup;
         }
         
         this.hideLoadingIndicator();
@@ -670,97 +736,273 @@ export default class extends Controller {
     }, 100); // Small delay to ensure UI updates
   }
   
-  fetchVisualizations() {
-    console.log("🔍 AI Assistant - Fetching visualizations from API");
-    
-    // Don't proceed if we don't have the required data
-    if (!this.hasRepositoryIdValue || !this.hasFilePathValue) {
-      console.log("🔍 AI Assistant - Missing required values for API call:",
-        { hasRepositoryId: this.hasRepositoryIdValue, hasFilePath: this.hasFilePathValue });
-      
-      if (this.hasVisualizationsContentTarget) {
-        this.visualizationsContentTarget.innerHTML = "<p class='error'>Please select a file first to get visualizations.</p>";
-      }
-      
-      if (this.hasLoadingIndicatorTarget) {
-        this.hideLoadingIndicator();
-      }
-      
-      return;
-    }
-    
-    // Always make sure loading indicator is visible first
-    if (this.hasLoadingIndicatorTarget) {
-      this.showLoadingIndicator();
-    }
-    
-    if (this.hasErrorMessageTarget) {
-      this.errorMessageTarget.classList.add('hidden');
-    }
-    
-    if (this.hasVisualizationsContentTarget) {
-      // Clear existing content to make loading more obvious
-      this.visualizationsContentTarget.innerHTML = "";
-    }
-    
-    // Force a small delay to ensure the loading state is rendered
-    setTimeout(() => {
-      const url = `/api/file_visualizations?repository_id=${this.repositoryIdValue}&file_path=${encodeURIComponent(this.filePathValue)}`;
-      console.log("🔍 AI Assistant - Request URL:", url);
-      
-      fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
-        }
-      })
-      .then(response => {
-        console.log("🔍 AI Assistant - Visualizations response status:", response.status);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch visualizations: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log("🔍 AI Assistant - Received visualizations data");
-        // Add refresh button
-        const refreshButton = `<div class="refresh-button"><button data-action="click->ai-assistant#refreshVisualizations">Refresh</button></div>`;
-        this.visualizationsContentTarget.innerHTML = this.formatExplanation(data.visualizations) + refreshButton;
-        this.visualizationsLoaded = true;
-        
-        // Ensure loading indicator is completely hidden
-        this.hideLoadingIndicator();
-      })
-      .catch(error => {
-        console.error('Error fetching visualizations:', error);
-        
-        if (this.hasErrorMessageTarget) {
-          this.errorMessageTarget.classList.remove('hidden');
-          this.errorMessageTarget.textContent = 'Failed to load visualizations. Please try again.';
-        }
-        
-        this.hideLoadingIndicator();
-      });
-    }, 100); // Small delay to ensure UI updates
-  }
-  
-  // Helper methods to refresh content
   refreshChallenges() {
     console.log("🔍 AI Assistant - Refreshing learning challenges");
     this.challengesLoaded = false;
-    this.fetchLearningChallenges();
+    // Clear existing content to show the loading state
+    if (this.hasChallengesContentTarget) {
+      // Save a backup of the content in case the refresh fails
+      this._challengesContentBackup = this.challengesContentTarget.innerHTML;
+      // Only show loading if the tab is currently active
+      if (document.querySelector('[data-tab="challenges"].active')) {
+        this.challengesContentTarget.innerHTML = "";
+      }
+    }
+    // Force refresh from server (bypass cache)
+    this.fetchLearningChallenges(true);
   }
   
-  refreshPatterns() {
-    console.log("🔍 AI Assistant - Refreshing related patterns");
-    this.patternsLoaded = false;
-    this.fetchRelatedPatterns();
+  // Create feedback UI component
+  createFeedbackUI(contentType) {
+    return `
+      <div class="ai-feedback" data-content-type="${contentType}">
+        <div class="ai-feedback-question">Was this response helpful?</div>
+        <div class="ai-feedback-buttons">
+          <button class="ai-feedback-button helpful" data-action="click->ai-assistant#markHelpful" data-content-type="${contentType}">
+            <i class="bi bi-hand-thumbs-up"></i> Yes
+          </button>
+          <button class="ai-feedback-button not-helpful" data-action="click->ai-assistant#markNotHelpful" data-content-type="${contentType}">
+            <i class="bi bi-hand-thumbs-down"></i> No
+          </button>
+        </div>
+        <div class="ai-feedback-textarea" data-content-type="${contentType}">
+          <textarea placeholder="Please tell us why (optional)" rows="3" data-content-type="${contentType}"></textarea>
+          <button class="ai-feedback-submit" data-action="click->ai-assistant#submitFeedback" data-content-type="${contentType}">Submit Feedback</button>
+        </div>
+        <div class="ai-feedback-thanks" data-content-type="${contentType}">
+          Thank you for your feedback!
+        </div>
+        <div class="ai-feedback-stats" data-content-type="${contentType}">
+          <!-- Stats will be populated when feedback is received -->
+        </div>
+      </div>
+    `;
   }
   
-  refreshVisualizations() {
-    console.log("🔍 AI Assistant - Refreshing visualizations");
-    this.visualizationsLoaded = false;
-    this.fetchVisualizations();
+  // Mark response as helpful
+  markHelpful(event) {
+    const contentType = event.currentTarget.dataset.contentType;
+    this.handleFeedbackSelection(event.currentTarget, true, contentType);
+  }
+  
+  // Mark response as not helpful
+  markNotHelpful(event) {
+    const contentType = event.currentTarget.dataset.contentType;
+    this.handleFeedbackSelection(event.currentTarget, false, contentType);
+  }
+  
+  // Handle feedback button selection
+  handleFeedbackSelection(button, isHelpful, contentType) {
+    // Get all buttons for this content type
+    const container = button.closest('.ai-feedback');
+    const helpfulButton = container.querySelector('.ai-feedback-button.helpful');
+    const notHelpfulButton = container.querySelector('.ai-feedback-button.not-helpful');
+    
+    // Reset both buttons
+    helpfulButton.classList.remove('selected');
+    notHelpfulButton.classList.remove('selected');
+    
+    // Select clicked button
+    button.classList.add('selected');
+    
+    // Show textarea for additional feedback (especially for not helpful)
+    const textarea = container.querySelector('.ai-feedback-textarea');
+    if (textarea) {
+      textarea.classList.add('visible');
+      
+      // If "Yes/Helpful" was clicked, provide option to submit without comments
+      const submitButton = textarea.querySelector('.ai-feedback-submit');
+      if (submitButton) {
+        if (isHelpful) {
+          submitButton.textContent = 'Submit';
+        } else {
+          submitButton.textContent = 'Submit Feedback';
+        }
+      }
+    }
+    
+    // Store the selection for later submission
+    this._feedbackSelection = {
+      contentType: contentType,
+      isHelpful: isHelpful
+    };
+  }
+  
+  // Submit feedback
+  submitFeedback(event) {
+    const contentType = event.currentTarget.dataset.contentType;
+    const container = event.currentTarget.closest('.ai-feedback');
+    
+    if (!this._feedbackSelection || this._feedbackSelection.contentType !== contentType) {
+      console.error("🔍 AI Assistant - No feedback selection found");
+      return;
+    }
+    
+    // Get textarea value
+    const textarea = container.querySelector('textarea');
+    const feedbackText = textarea ? textarea.value.trim() : '';
+    
+    // Disable submit button during submission
+    const submitButton = event.currentTarget;
+    submitButton.disabled = true;
+    submitButton.textContent = 'Submitting...';
+    
+    // Submit feedback to API
+    fetch('/api/submit_feedback', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+      },
+      body: JSON.stringify({
+        repository_id: this.repositoryIdValue,
+        file_path: this.filePathValue,
+        content_type: contentType,
+        is_helpful: this._feedbackSelection.isHelpful,
+        feedback_text: feedbackText
+      })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to submit feedback: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log("🔍 AI Assistant - Feedback submitted successfully:", data);
+      
+      // Hide textarea and show thank you message
+      const textareaDiv = container.querySelector('.ai-feedback-textarea');
+      if (textareaDiv) {
+        textareaDiv.classList.remove('visible');
+      }
+      
+      const thanksDiv = container.querySelector('.ai-feedback-thanks');
+      if (thanksDiv) {
+        thanksDiv.classList.add('visible');
+      }
+      
+      // Update stats if available
+      if (data.stats) {
+        const statsDiv = container.querySelector('.ai-feedback-stats');
+        if (statsDiv) {
+          const helpfulCount = data.stats.helpful_count || 0;
+          const notHelpfulCount = data.stats.not_helpful_count || 0;
+          
+          statsDiv.innerHTML = `
+            <div class="ai-feedback-stat ai-feedback-stat-helpful">
+              <i class="bi bi-hand-thumbs-up"></i> ${helpfulCount}
+            </div>
+            <div class="ai-feedback-stat ai-feedback-stat-not-helpful">
+              <i class="bi bi-hand-thumbs-down"></i> ${notHelpfulCount}
+            </div>
+          `;
+        }
+      }
+      
+      // Clear feedback selection
+      this._feedbackSelection = null;
+    })
+    .catch(error => {
+      console.error('Error submitting feedback:', error);
+      
+      // Re-enable submit button
+      submitButton.disabled = false;
+      submitButton.textContent = 'Submit Feedback';
+      
+      // Show error message
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'ai-error';
+      errorDiv.textContent = 'Failed to submit feedback. Please try again.';
+      
+      // Remove existing error message if any
+      const existingError = container.querySelector('.ai-error');
+      if (existingError) {
+        existingError.remove();
+      }
+      
+      // Add error message before textarea
+      const textareaDiv = container.querySelector('.ai-feedback-textarea');
+      if (textareaDiv) {
+        container.insertBefore(errorDiv, textareaDiv);
+      } else {
+        container.appendChild(errorDiv);
+      }
+    });
+  }
+  
+  // Add this new method to check for existing feedback
+  checkExistingFeedback(contentType) {
+    if (!this.hasRepositoryIdValue || !this.hasFilePathValue) return;
+    
+    const url = `/api/check_feedback?repository_id=${this.repositoryIdValue}&file_path=${encodeURIComponent(this.filePathValue)}&content_type=${contentType}`;
+    
+    fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log(`🔍 AI Assistant - Existing feedback check for ${contentType}:`, data);
+      
+      if (data.has_feedback) {
+        const container = document.querySelector(`.ai-feedback[data-content-type="${contentType}"]`);
+        if (container) {
+          // Disable buttons and show thank you message
+          const buttons = container.querySelectorAll('.ai-feedback-button');
+          buttons.forEach(button => {
+            button.disabled = true;
+            button.classList.add('disabled');
+          });
+          
+          // Mark the selected option
+          if (data.is_helpful) {
+            container.querySelector('.ai-feedback-button.helpful').classList.add('selected');
+          } else {
+            container.querySelector('.ai-feedback-button.not-helpful').classList.add('selected');
+          }
+          
+          // Show thank you message
+          const thanksDiv = container.querySelector('.ai-feedback-thanks');
+          if (thanksDiv) {
+            thanksDiv.classList.add('visible');
+            thanksDiv.textContent = "You've already provided feedback. Thank you!";
+          }
+          
+          // Update stats
+          this.updateFeedbackStats(contentType, data.stats);
+        }
+      }
+    })
+    .catch(error => {
+      console.error(`Error checking existing feedback for ${contentType}:`, error);
+    });
+  }
+  
+  // Add this helper method to update feedback stats
+  updateFeedbackStats(contentType, stats) {
+    if (!stats) return;
+    
+    const container = document.querySelector(`.ai-feedback[data-content-type="${contentType}"]`);
+    if (!container) return;
+    
+    const statsDiv = container.querySelector('.ai-feedback-stats');
+    if (statsDiv) {
+      const helpfulCount = stats.helpful_count || 0;
+      const notHelpfulCount = stats.not_helpful_count || 0;
+      
+      statsDiv.innerHTML = `
+        <div class="ai-feedback-stat ai-feedback-stat-helpful">
+          <i class="bi bi-hand-thumbs-up"></i> ${helpfulCount}
+        </div>
+        <div class="ai-feedback-stat ai-feedback-stat-not-helpful">
+          <i class="bi bi-hand-thumbs-down"></i> ${notHelpfulCount}
+        </div>
+      `;
+    }
   }
 } 

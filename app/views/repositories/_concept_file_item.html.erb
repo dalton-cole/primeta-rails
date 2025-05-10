@@ -1,0 +1,18 @@
+<div class="concept-file-item">
+  <% if file %>
+    <% viewed = viewed_file_ids&.include?(file.id) %>
+    <div class="concept-file-link <%= viewed ? 'viewed' : '' %>"
+         data-path="<%= file.path %>"
+         data-file-id="<%= file.id %>"
+         data-action="click->inline-editor#showFile"
+         data-turbo-frame="concept_file_<%= file.id %>_status">
+      <i class="fas fa-file-code"></i>
+      <span class="file-path-text"><%= file_path %></span>
+    </div>
+  <% else %>
+    <span class="unavailable-file">
+      <i class="fas fa-file-alt"></i>
+      <%= file_path %>
+    </span>
+  <% end %>
+</div> 

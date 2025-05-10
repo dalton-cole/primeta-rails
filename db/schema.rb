@@ -10,7 +10,33 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_08_153245) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_10_013418) do
+  create_table "ai_feedbacks", force: :cascade do |t|
+    t.integer "user_id"
+    t.integer "repository_id"
+    t.string "file_path"
+    t.string "content_type"
+    t.boolean "is_helpful"
+    t.text "feedback_text"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["is_helpful"], name: "index_ai_feedbacks_on_is_helpful"
+    t.index ["repository_id", "file_path", "content_type"], name: "idx_on_repository_id_file_path_content_type_3e9fe1e16d"
+    t.index ["repository_id"], name: "index_ai_feedbacks_on_repository_id"
+    t.index ["user_id", "repository_id", "file_path", "content_type"], name: "index_ai_feedbacks_on_user_content_uniqueness", unique: true
+    t.index ["user_id"], name: "index_ai_feedbacks_on_user_id"
+  end
+
+  create_table "ai_response_caches", force: :cascade do |t|
+    t.integer "repository_id"
+    t.string "file_path"
+    t.string "cache_type"
+    t.text "content"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["repository_id", "file_path", "cache_type"], name: "index_ai_response_caches_on_repo_file_and_type", unique: true
+  end
+
   create_table "file_views", force: :cascade do |t|
     t.integer "user_id", null: false
     t.integer "repository_file_id", null: false
@@ -62,6 +88,39 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_08_153245) do
     t.index ["repository_id"], name: "index_repository_files_on_repository_id"
   end
 
+  create_table "scavenger_hunt_items", force: :cascade do |t|
+    t.integer "scavenger_hunt_id", null: false
+    t.string "file_path"
+    t.integer "line_number"
+    t.string "code_element"
+    t.text "description"
+    t.text "hint"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["scavenger_hunt_id"], name: "index_scavenger_hunt_items_on_scavenger_hunt_id"
+  end
+
+  create_table "scavenger_hunts", force: :cascade do |t|
+    t.string "title"
+    t.text "description"
+    t.string "difficulty"
+    t.integer "repository_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["repository_id"], name: "index_scavenger_hunts_on_repository_id"
+  end
+
+  create_table "user_hunt_completions", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.integer "scavenger_hunt_item_id", null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["scavenger_hunt_item_id"], name: "index_user_hunt_completions_on_scavenger_hunt_item_id"
+    t.index ["user_id", "scavenger_hunt_item_id"], name: "idx_user_hunt_completions_uniqueness", unique: true
+    t.index ["user_id"], name: "index_user_hunt_completions_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
@@ -84,4 +143,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_08_153245) do
   add_foreign_key "file_views", "users"
   add_foreign_key "key_concepts", "repositories"
   add_foreign_key "repository_files", "repositories"
+  add_foreign_key "scavenger_hunt_items", "scavenger_hunts"
+  add_foreign_key "scavenger_hunts", "repositories"
+  add_foreign_key "user_hunt_completions", "scavenger_hunt_items"
+  add_foreign_key "user_hunt_completions", "users"
 end

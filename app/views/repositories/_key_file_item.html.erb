@@ -1,0 +1,10 @@
+<%= turbo_frame_tag "file_#{file.id}_status" do %>
+  <div class="key-file-item <%= viewed ? 'viewed' : '' %>" 
+       data-path="<%= file.path %>"
+       data-file-id="<%= file.id %>"
+       data-action="click->inline-editor#showFile"
+       data-turbo-frame="file_<%= file.id %>_status">
+    <span class="key-file-star">★</span>
+    <span class="key-file-path"><%= file.path %></span>
+  </div>
+<% end %> 

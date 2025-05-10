@@ -1,17 +1,25 @@
 module Api
   class FileContextController < ApplicationController
     before_action :authenticate_user!
-    before_action :check_gemini_enabled, except: [:test_gemini]
+    before_action :check_gemini_enabled, except: [:test_gemini, :submit_feedback]
     
     def show
       repository_id = params[:repository_id]
       file_path = params[:file_path]
+      refresh = params[:refresh] == 'true'
       
       Rails.logger.info("=== AI ASSISTANT FILE CONTEXT ===")
       Rails.logger.info("Repository ID: #{repository_id}")
       Rails.logger.info("File Path: #{file_path}")
+      Rails.logger.info("Refresh: #{refresh}")
       
       return render json: { error: "Missing required parameters" }, status: :bad_request unless repository_id.present? && file_path.present?
+      
+      # Only allow admins to force refresh
+      if refresh && !current_user&.admin?
+        Rails.logger.warn("Non-admin user attempted to force refresh content")
+        refresh = false
+      end
       
       repository = Repository.find_by(id: repository_id)
       return render json: { error: "Repository not found" }, status: :not_found unless repository
@@ -27,6 +35,28 @@ module Api
       
       Rails.logger.info("File found: #{repository_file.path}")
       
+      # Check cache first unless refresh is requested
+      unless refresh
+        cache_record = AiResponseCache.find_by(
+          repository_id: repository_id,
+          file_path: file_path,
+          cache_type: 'context'
+        )
+        
+        if cache_record.present?
+          Rails.logger.info("Found cached explanation, returning from cache")
+          cached_flag = true
+          cached_at = cache_record.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+          Rails.logger.info("Cache status: #{cached_flag.inspect} (#{cached_flag.class})")
+          return render json: { 
+            file_path: file_path,
+            explanation: cache_record.content,
+            cached: cached_flag,
+            cached_at: cached_at
+          }
+        end
+      end
+      
       # Get file content using existing mechanisms
       file_content = begin
         content = fetch_file_content(repository, file_path)
@@ -41,14 +71,21 @@ module Api
       begin
         explanation = gemini_service.explain_code(file_path, file_content)
         Rails.logger.info("Explanation generated successfully, length: #{explanation.to_s.length} characters")
+        
+        # Cache the result
+        AiResponseCache.find_or_create_for(repository_id, file_path, 'context', explanation)
+        Rails.logger.info("Explanation cached successfully")
       rescue => e
         Rails.logger.error("Gemini API error: #{e.message}")
         return render json: { error: "Error generating explanation: #{e.message}" }, status: :internal_server_error
       end
       
+      cached_flag = false
+      Rails.logger.info("Cache status: #{cached_flag.inspect} (#{cached_flag.class})")
       render json: { 
         file_path: file_path,
-        explanation: explanation
+        explanation: explanation,
+        cached: cached_flag
       }
     end
     
@@ -98,7 +135,8 @@ module Api
       
       render json: { 
         file_path: file_path,
-        suggestions: suggestions
+        suggestions: suggestions,
+        cached: false
       }
     end
     
@@ -106,12 +144,20 @@ module Api
     def learning_challenges
       repository_id = params[:repository_id]
       file_path = params[:file_path]
+      refresh = params[:refresh] == 'true'
       
       Rails.logger.info("=== AI ASSISTANT LEARNING CHALLENGES ===")
       Rails.logger.info("Repository ID: #{repository_id}")
       Rails.logger.info("File Path: #{file_path}")
+      Rails.logger.info("Refresh: #{refresh}")
       
       return render json: { error: "Missing required parameters" }, status: :bad_request unless repository_id.present? && file_path.present?
+      
+      # Only allow admins to force refresh
+      if refresh && !current_user&.admin?
+        Rails.logger.warn("Non-admin user attempted to force refresh challenges")
+        refresh = false
+      end
       
       repository = Repository.find_by(id: repository_id)
       return render json: { error: "Repository not found" }, status: :not_found unless repository
@@ -127,6 +173,28 @@ module Api
       
       Rails.logger.info("File found: #{repository_file.path}")
       
+      # Check cache first unless refresh is requested
+      unless refresh
+        cache_record = AiResponseCache.find_by(
+          repository_id: repository_id,
+          file_path: file_path,
+          cache_type: 'challenges'
+        )
+        
+        if cache_record.present?
+          Rails.logger.info("Found cached challenges, returning from cache")
+          cached_flag = true
+          cached_at = cache_record.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+          Rails.logger.info("Cache status for challenges: #{cached_flag.inspect} (#{cached_flag.class})")
+          return render json: { 
+            file_path: file_path,
+            challenges: cache_record.content,
+            cached: cached_flag,
+            cached_at: cached_at
+          }
+        end
+      end
+      
       # Get file content
       file_content = begin
         content = fetch_file_content(repository, file_path)
@@ -141,14 +209,21 @@ module Api
       begin
         challenges = gemini_service.generate_learning_challenges(file_path, file_content, repository)
         Rails.logger.info("Learning challenges generated successfully, length: #{challenges.to_s.length} characters")
+        
+        # Cache the result
+        AiResponseCache.find_or_create_for(repository_id, file_path, 'challenges', challenges)
+        Rails.logger.info("Challenges cached successfully")
       rescue => e
         Rails.logger.error("Gemini API error: #{e.message}")
         return render json: { error: "Error generating learning challenges: #{e.message}" }, status: :internal_server_error
       end
       
+      cached_flag = false
+      Rails.logger.info("Cache status for challenges: #{cached_flag.inspect} (#{cached_flag.class})")
       render json: { 
         file_path: file_path,
-        challenges: challenges
+        challenges: challenges,
+        cached: cached_flag
       }
     end
     
@@ -198,7 +273,8 @@ module Api
       
       render json: { 
         file_path: file_path,
-        patterns: patterns
+        patterns: patterns,
+        cached: false
       }
     end
     
@@ -248,7 +324,8 @@ module Api
       
       render json: { 
         file_path: file_path,
-        visualizations: visualizations
+        visualizations: visualizations,
+        cached: false
       }
     end
     
@@ -288,6 +365,119 @@ module Api
           status: "error", 
           message: "Gemini API is not enabled in configuration" 
         }, status: :service_unavailable
+      end
+    end
+    
+    # Submit feedback for AI responses
+    def submit_feedback
+      repository_id = params[:repository_id]
+      file_path = params[:file_path]
+      content_type = params[:content_type]
+      is_helpful = params[:is_helpful]
+      feedback_text = params[:feedback_text]
+      
+      Rails.logger.info("=== AI ASSISTANT FEEDBACK SUBMISSION ===")
+      Rails.logger.info("Repository ID: #{repository_id}")
+      Rails.logger.info("File Path: #{file_path}")
+      Rails.logger.info("Content Type: #{content_type}")
+      Rails.logger.info("Is Helpful: #{is_helpful}")
+      Rails.logger.info("Feedback: #{feedback_text}")
+      
+      return render json: { error: "Missing required parameters" }, status: :bad_request unless repository_id.present? && file_path.present? && content_type.present? && !is_helpful.nil?
+      
+      # Verify repository exists
+      repository = Repository.find_by(id: repository_id)
+      return render json: { error: "Repository not found" }, status: :not_found unless repository
+      
+      # Check if the user has already provided feedback for this content
+      existing_feedback = AiFeedback.find_by(
+        user_id: current_user&.id,
+        repository_id: repository_id,
+        file_path: file_path,
+        content_type: content_type
+      )
+      
+      if existing_feedback
+        # Update existing feedback
+        Rails.logger.info("Updating existing feedback record")
+        existing_feedback.is_helpful = is_helpful == 'true' || is_helpful == true
+        existing_feedback.feedback_text = feedback_text if feedback_text.present?
+        success = existing_feedback.save
+        feedback = existing_feedback
+      else
+        # Create feedback record
+        Rails.logger.info("Creating new feedback record")
+        feedback = AiFeedback.new(
+          user_id: current_user&.id,
+          repository_id: repository_id,
+          file_path: file_path,
+          content_type: content_type,
+          is_helpful: is_helpful == 'true' || is_helpful == true,
+          feedback_text: feedback_text
+        )
+        success = feedback.save
+      end
+      
+      if success
+        Rails.logger.info("Feedback saved successfully")
+        
+        # Get updated stats
+        stats = AiFeedback.stats_for(repository_id, file_path, content_type)
+        helpful_count = stats[true] || 0
+        not_helpful_count = stats[false] || 0
+        
+        render json: { 
+          success: true,
+          message: "Feedback recorded successfully",
+          stats: {
+            helpful_count: helpful_count,
+            not_helpful_count: not_helpful_count
+          }
+        }
+      else
+        Rails.logger.error("Error saving feedback: #{feedback.errors.full_messages.join(', ')}")
+        render json: { error: "Failed to save feedback: #{feedback.errors.full_messages.join(', ')}" }, status: :unprocessable_entity
+      end
+    end
+    
+    # Check if user has already submitted feedback
+    def check_feedback
+      repository_id = params[:repository_id]
+      file_path = params[:file_path]
+      content_type = params[:content_type]
+      
+      Rails.logger.info("=== AI ASSISTANT FEEDBACK CHECK ===")
+      Rails.logger.info("Repository ID: #{repository_id}")
+      Rails.logger.info("File Path: #{file_path}")
+      Rails.logger.info("Content Type: #{content_type}")
+      
+      return render json: { has_feedback: false } unless current_user
+      
+      feedback = AiFeedback.find_by(
+        user_id: current_user.id,
+        repository_id: repository_id,
+        file_path: file_path,
+        content_type: content_type
+      )
+      
+      if feedback
+        Rails.logger.info("User has existing feedback: is_helpful=#{feedback.is_helpful}")
+        # Get overall stats
+        stats = AiFeedback.stats_for(repository_id, file_path, content_type)
+        helpful_count = stats[true] || 0
+        not_helpful_count = stats[false] || 0
+        
+        render json: { 
+          has_feedback: true, 
+          is_helpful: feedback.is_helpful,
+          stats: {
+            helpful_count: helpful_count,
+            not_helpful_count: not_helpful_count
+          }
+        }
+      else
+        Rails.logger.info("No existing feedback found for user")
+        render json: { has_feedback: false }
       end
     end
     

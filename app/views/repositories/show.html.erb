@@ -6,7 +6,7 @@
     <div class="actions">
       <% if user_signed_in? %>
         <div class="user-menu compact">
-          <span class="user-name"><%= current_user.name || current_user.email %></span>
+          <span class="user-name" onclick="this.closest('.user-menu').classList.toggle('active'); event.preventDefault(); event.stopPropagation(); return false;"><%= current_user.name || current_user.email %></span>
           <div class="dropdown-menu">
             <%= link_to "Profile", my_profile_path %>
             <%= link_to "Settings", edit_user_registration_path %>
@@ -23,10 +23,10 @@
     </div>
   </div>
 
-  <div class="repository-content" data-controller="inline-editor" 
+  <div class="repository-content" data-controller="inline-editor tab-manager" 
        data-inline-editor-repository-id-value="<%= @repository.id %>">
     <div class="sidebar">
-      <h3>Files</h3>
+      <h3><i class="fas fa-folder"></i> Files</h3>
       
       <% if @repository.repository_files.any? %>
         <div class="file-explorer" data-controller="file-explorer">
@@ -74,46 +74,68 @@
         
         <hr class="info-divider">
         
-        <h2>Your Progress</h2>
-        
-        <%= turbo_stream_from "repository_#{@repository.id}_progress" %>
-        <%= render partial: 'repositories/progress', locals: {
-            repository: @repository,
-            total_files_count: @total_files_count,
-            viewed_files_count: @viewed_files_count,
-            files_progress_percentage: @files_progress_percentage,
-            key_files_count: @key_files_count,
-            viewed_key_files_count: @viewed_key_files_count,
-            key_files_progress_percentage: @key_files_progress_percentage
-        } %>
-        
-        <h3>Getting Started</h3>
-        <p>Select a file from the sidebar to view its content and start tracking your progress.</p>
-        
-        <% if @key_files_from_concepts.any? %>
-          <h3>Key Files From Concepts</h3>
-          <p>These files have been identified as particularly important from the key concepts:</p>
-          <div class="key-files-list">
-            <% @key_files_from_concepts.each do |file| %>
-              <div class="key-file-item">
-                <span class="key-file-star">★</span>
-                <%= link_to file.path, "#", 
-                    data: {
-                      path: file.path,
-                      file_id: file.id,
-                      action: "click->inline-editor#showFile"
-                    } %>
+        <!-- Tabs Navigation -->
+        <div class="info-tabs">
+          <div class="tab-nav">
+            <button class="tab-btn active" data-tab="overview" data-action="click->tab-manager#switchTab">Overview</button>
+            <button class="tab-btn" data-tab="key-files" data-action="click->tab-manager#switchTab">Key Files</button>
+            <button class="tab-btn" data-tab="concepts" data-action="click->tab-manager#switchTab">Concepts</button>
+          </div>
+          
+          <!-- Overview Tab -->
+          <div class="tab-content active" id="overview-tab" data-tab-manager-target="tabContent">
+            <h2>Your Progress</h2>
+            
+            <%= turbo_stream_from "repository_#{@repository.id}_progress" %>
+            <%= render partial: 'repositories/progress', locals: {
+                repository: @repository,
+                total_files_count: @total_files_count,
+                viewed_files_count: @viewed_files_count,
+                files_progress_percentage: @files_progress_percentage,
+                key_files_count: @key_files_count,
+                viewed_key_files_count: @viewed_key_files_count,
+                key_files_progress_percentage: @key_files_progress_percentage
+            } %>
+          </div>
+          
+          <!-- Key Files Tab -->
+          <div class="tab-content" id="key-files-tab" data-tab-manager-target="tabContent">
+            <h2>Key Files</h2>
+            <p>These files have been identified as particularly important to understand the codebase:</p>
+            
+            <% if @key_files_from_concepts.any? %>
+              <div class="key-files-list">
+                <% @key_files_from_concepts.each do |file| %>
+                  <% viewed = @viewed_file_ids&.include?(file.id) %>
+                  <%= render 'key_file_item', file: file, viewed: viewed %>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="key-files-empty">
+                <i class="fas fa-key"></i>
+                <h3>No key files identified yet</h3>
+                <p>
+                  Key files are automatically identified when the system analyzes concepts in this repository.
+                  <% if current_user.admin? %>
+                    Try using the "Extract Concepts" feature or analyzing specific concepts in the Concepts tab.
+                  <% else %>
+                    They will appear here once they've been identified by the system.
+                  <% end %>
+                </p>
               </div>
             <% end %>
           </div>
-        <% end %>
-
-        <% if @key_concepts.present? %>
-          <section class="key-concepts">
+          
+          <!-- Concepts Tab -->
+          <div class="tab-content" id="concepts-tab" data-tab-manager-target="tabContent">
             <h2>Key Concepts</h2>
             
             <% if current_user.admin? %>
               <div class="concept-analysis-form">
+                <div class="form-header">
+                  <i class="fas fa-lightbulb"></i>
+                  <h3>Analyze New Concepts</h3>
+                </div>
                 <%= form_tag analyze_concept_repository_path(@repository), method: :post, class: "analyze-concept-form" do %>
                   <div class="form-group">
                     <%= label_tag :concept_name, "Analyze specific concept(s):" %>
@@ -128,42 +150,58 @@
               </div>
             <% end %>
             
-            <ul>
-              <% @key_concepts.each do |concept| %>
-                <% not_found = concept.description&.include?("could not be found") || concept.description&.include?("does not appear to be implemented") %>
-                <li class="<%= 'concept-not-found' if not_found %>">
-                  <strong><%= concept.name %></strong>
-                  <p><%= concept.description %></p>
-                  <% if not_found %>
-                    <div class="concept-help-tip">
-                      <p>Try limiting your search to specific directories where this concept might be implemented. For example:</p>
-                      <code>src/consensus/, src/validation/, src/mining/</code>
+            <% if @key_concepts.present? %>
+              <div class="concepts-grid">
+                <% @key_concepts.each do |concept| %>
+                  <% not_found = concept.description&.include?("could not be found") || concept.description&.include?("does not appear to be implemented") %>
+                  <div class="concept-card <%= 'concept-not-found' if not_found %>">
+                    <div class="concept-header">
+                      <i class="fas <%= not_found ? 'fa-question-circle' : 'fa-puzzle-piece' %>"></i>
+                      <h3><%= concept.name %></h3>
                     </div>
-                  <% end %>
-                  <% if concept.key_files.present? %>
-                    <small>Key files: 
-                      <% concept.key_files.each do |file_path| %>
-                        <% if file = @repository.repository_files.find_by(path: file_path) %>
-                          <%= link_to file_path, "#", 
-                              class: "concept-file-link",
-                              data: {
-                                path: file_path,
-                                file_id: file.id,
-                                action: "click->inline-editor#showFile"
-                              } %>
-                        <% else %>
-                          <%= file_path %>
-                        <% end %>
-                        <%= "," unless file_path == concept.key_files.last %>
-                      <% end %>
-                    </small><br>
-                    <em><%= concept.key_files_explanation %></em>
-                  <% end %>
-                </li>
-              <% end %>
-            </ul>
-          </section>
-        <% end %>
+                    <div class="concept-description">
+                      <p><%= concept.description %></p>
+                    </div>
+                    <% if not_found %>
+                      <div class="concept-help-tip">
+                        <div class="help-header">
+                          <i class="fas fa-info-circle"></i>
+                          <h4>Suggestion</h4>
+                        </div>
+                        <p>Try limiting your search to specific directories where this concept might be implemented. For example:</p>
+                        <code>src/consensus/, src/validation/, src/mining/</code>
+                      </div>
+                    <% end %>
+                    <% if concept.key_files.present? %>
+                      <div class="concept-files">
+                        <div class="files-header">
+                          <i class="fas fa-file-code"></i>
+                          <h4>Key Files</h4>
+                        </div>
+                        <div class="files-list">
+                          <% concept.key_files.each do |file_path| %>
+                            <% file = @repository.repository_files.find_by(path: file_path) %>
+                            <%= render 'concept_file_item', file: file, file_path: file_path, viewed_file_ids: @viewed_file_ids %>
+                          <% end %>
+                        </div>
+                        <div class="files-explanation">
+                          <p><em><%= concept.key_files_explanation %></em></p>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="empty-state">
+                <i class="fas fa-lightbulb"></i>
+                <p>No key concepts identified yet.</p>
+                <p>Concepts help you understand the main features and components of this repository.</p>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        
       </div>
       
       <div class="editor-container" data-inline-editor-target="editorContainer" style="display: none;">
@@ -175,10 +213,169 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // Mark files as viewed when clicked
+    // Setup functionality for initial page load
+    setupPageInteractions();
+  });
+  
+  document.addEventListener('turbo:load', function() {
+    // Setup functionality when navigating via Turbo
+    setupPageInteractions();
+  });
+  
+  function setupPageInteractions() {
+    // Fix for file explorer folder expansion
+    const fileExplorer = document.querySelector('[data-controller="file-explorer"]');
+    if (fileExplorer) {
+      // Initialize all directories to be collapsed by default
+      const directories = fileExplorer.querySelectorAll('.directory');
+      directories.forEach(dir => {
+        const dirContents = dir.querySelector('.directory-children');
+        if (dirContents && !dir.classList.contains('expanded')) {
+          dirContents.style.display = 'none';
+          dirContents.style.maxHeight = '0';
+          dirContents.style.opacity = '0';
+        }
+      });
+      
+      // Log the count for debugging
+      console.log(`Initialized ${directories.length} directories in file explorer`);
+      
+      // Add manual click handlers as a fallback
+      const directoryLabels = fileExplorer.querySelectorAll('.directory-label');
+      directoryLabels.forEach(label => {
+        label.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const directory = this.closest('.directory');
+          const dirContents = directory.querySelector('.directory-children');
+          const isExpanded = directory.classList.contains('expanded');
+          
+          // Toggle class
+          directory.classList.toggle('expanded');
+          this.classList.toggle('expanded');
+          
+          // Update folder icon
+          const folderIcon = this.querySelector('.fa-folder, .fa-folder-open');
+          if (folderIcon) {
+            if (isExpanded) {
+              folderIcon.classList.remove('fa-folder-open');
+              folderIcon.classList.add('fa-folder');
+            } else {
+              folderIcon.classList.remove('fa-folder');
+              folderIcon.classList.add('fa-folder-open');
+            }
+          }
+          
+          // Update caret icon
+          const caretIcon = this.querySelector('.fa-caret-right');
+          if (caretIcon) {
+            caretIcon.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(90deg)';
+          }
+          
+          // Toggle content visibility
+          if (dirContents) {
+            if (isExpanded) {
+              dirContents.style.maxHeight = '0';
+              dirContents.style.opacity = '0';
+              setTimeout(() => {
+                if (!directory.classList.contains('expanded')) {
+                  dirContents.style.display = 'none';
+                }
+              }, 300);
+            } else {
+              dirContents.style.display = 'block';
+              // Force reflow
+              void dirContents.offsetHeight;
+              dirContents.style.maxHeight = `${dirContents.scrollHeight}px`;
+              dirContents.style.opacity = '1';
+            }
+          }
+        });
+      });
+    }
+    
+    // Enhanced Tab switching functionality - fallback for non-Stimulus browsers
+    // Note: Our Stimulus controller handles this but this is a backup
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        // Only process if this tab isn't already active and not using Stimulus
+        if (!button.classList.contains('active') && !button.hasAttribute('data-action')) {
+          // Remove active class from all buttons
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          
+          // Hide all content with fade out first
+          tabContents.forEach(content => {
+            if (content.classList.contains('active')) {
+              content.style.opacity = '0';
+              content.style.transform = 'translateY(10px)';
+              
+              // After short animation, hide and show new content
+              setTimeout(() => {
+                content.classList.remove('active');
+                
+                // Show corresponding content for clicked button
+                const tabId = button.getAttribute('data-tab');
+                const newActiveContent = document.getElementById(`${tabId}-tab`);
+                
+                // Add active class to clicked button
+                button.classList.add('active');
+                
+                // Show the new content with animation
+                newActiveContent.classList.add('active');
+                newActiveContent.style.opacity = '0';
+                newActiveContent.style.transform = 'translateY(10px)';
+                
+                // Force reflow to ensure animation works
+                void newActiveContent.offsetWidth;
+                
+                // Start fade in animation
+                newActiveContent.style.opacity = '1';
+                newActiveContent.style.transform = 'translateY(0)';
+              }, 150);
+            }
+          });
+        }
+      });
+    });
+    
+    // Enhanced directory tree interaction
+    const directoryLabels = document.querySelectorAll('.directory-label');
+    
+    directoryLabels.forEach(label => {
+      label.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const directory = this.closest('.directory');
+        const wasExpanded = directory.classList.contains('expanded');
+        
+        // Toggle expanded class
+        directory.classList.toggle('expanded');
+        this.classList.toggle('expanded');
+        
+        // Update icon for visual feedback
+        const folderIcon = this.querySelector('.fa-folder, .fa-folder-open');
+        if (folderIcon) {
+          if (wasExpanded) {
+            folderIcon.classList.remove('fa-folder-open');
+            folderIcon.classList.add('fa-folder');
+          } else {
+            folderIcon.classList.remove('fa-folder');
+            folderIcon.classList.add('fa-folder-open');
+          }
+        }
+      });
+    });
+    
+    // Mark files as viewed when clicked with visual feedback
     document.addEventListener('click', function(event) {
       const fileLink = event.target.closest('a[data-file-id]');
       if (fileLink) {
+        // Add viewed class for styling
         fileLink.classList.add('viewed-file');
         
         // Dispatch event to expand directories to this file
@@ -191,46 +388,130 @@
       }
     });
     
-    // Handle user dropdown menu in compact mode
-    document.addEventListener('click', function(e) {
-      // Close dropdown menus when clicking outside
-      if (!e.target.closest('.user-menu')) {
-        document.querySelectorAll('.user-menu').forEach(menu => {
-          menu.classList.remove('active');
-        });
+    // Enhanced expand-to-file functionality to automatically open directories to a file
+    document.addEventListener('expand-to-file', function(event) {
+      const path = event.detail.path;
+      const parts = path.split('/');
+      let currentPath = '';
+      
+      // Process each directory in the path
+      for (let i = 0; i < parts.length - 1; i++) {
+        currentPath += (i > 0 ? '/' : '') + parts[i];
+        const dirLabel = document.querySelector(`.directory-label[data-path="${currentPath}"]`);
+        
+        if (dirLabel) {
+          const directory = dirLabel.closest('.directory');
+          
+          // Only expand if not already expanded
+          if (!directory.classList.contains('expanded')) {
+            // Trigger click to expand
+            dirLabel.click();
+          }
+        }
       }
-    });
-
-    // Toggle dropdown on click
-    document.querySelectorAll('.user-menu .user-name').forEach(userMenu => {
-      userMenu.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const menu = this.closest('.user-menu');
-        menu.classList.toggle('active');
-      });
+      
+      // Highlight the target file
+      setTimeout(() => {
+        const fileLink = document.querySelector(`a[data-path="${path}"]`);
+        if (fileLink) {
+          fileLink.classList.add('highlight-file');
+          fileLink.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Remove highlight after a delay
+          setTimeout(() => {
+            fileLink.classList.remove('highlight-file');
+          }, 2000);
+        }
+      }, 300);
     });
     
-    // Add a small delay to let the page fully render
+    // Improved dropdown functionality
+    const setupDropdown = () => {
+      const userNameElement = document.querySelector('.user-menu.compact .user-name');
+      
+      if (userNameElement) {
+        // Clear any existing listeners to prevent duplicates
+        const newUserNameElement = userNameElement.cloneNode(true);
+        userNameElement.parentNode.replaceChild(newUserNameElement, userNameElement);
+        
+        // Add click listener to user name with improved handling
+        newUserNameElement.addEventListener('click', function(event) {
+          event.preventDefault();
+          event.stopPropagation();
+          
+          // Toggle active class on parent
+          const userMenu = this.closest('.user-menu');
+          userMenu.classList.toggle('active');
+          
+          // Focus trap for keyboard navigation
+          if (userMenu.classList.contains('active')) {
+            const firstFocusableElement = userMenu.querySelector('a, button');
+            if (firstFocusableElement) {
+              setTimeout(() => firstFocusableElement.focus(), 10);
+            }
+          }
+        });
+      }
+      
+      // Document click to close dropdown when clicking outside
+      document.addEventListener('click', function(event) {
+        const userMenu = document.querySelector('.user-menu.compact');
+        if (userMenu && !userMenu.contains(event.target)) {
+          userMenu.classList.remove('active');
+        }
+      });
+      
+      // Close dropdown on ESC key
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+          const userMenu = document.querySelector('.user-menu.compact');
+          if (userMenu) {
+            userMenu.classList.remove('active');
+          }
+        }
+      });
+    };
+    
+    // Initial setup
+    setupDropdown();
+    
+    // Handle URL hash for file navigation
     setTimeout(() => {
       // Get hash from URL if present (e.g., #file=src/main.cpp)
       const hash = window.location.hash;
       if (hash && hash.startsWith('#file=')) {
         const filePath = decodeURIComponent(hash.substring(6));
-        const fileLinks = document.querySelectorAll(`a[data-path="${filePath}"]`);
         
-        if (fileLinks.length > 0) {
-          // Expand directories to this file
-          document.dispatchEvent(new CustomEvent('expand-to-file', {
-            detail: { path: filePath }
-          }));
-          
-          // Click the file link to open it
-          fileLinks[0].click();
-        }
+        // First expand to the file
+        document.dispatchEvent(new CustomEvent('expand-to-file', {
+          detail: { path: filePath }
+        }));
+        
+        // Then find and click the file link
+        setTimeout(() => {
+          const fileLinks = document.querySelectorAll(`a[data-path="${filePath}"]`);
+          if (fileLinks.length > 0) {
+            fileLinks[0].click();
+          }
+        }, 500); // Give time for directories to expand
       }
     }, 300);
-  });
+    
+    // Add a highlight animation for the file-item class
+    document.head.insertAdjacentHTML('beforeend', `
+      <style>
+        @keyframes highlightPulse {
+          0% { background-color: rgba(99, 102, 241, 0); }
+          50% { background-color: rgba(99, 102, 241, 0.2); }
+          100% { background-color: rgba(99, 102, 241, 0); }
+        }
+        
+        .highlight-file {
+          animation: highlightPulse 1.5s ease;
+        }
+      </style>
+    `);
+  }
 </script>
 
 <style>
@@ -735,6 +1016,66 @@
     margin: 1.5rem 0;
   }
   
+  /* Tab styles */
+  .info-tabs {
+    margin-top: 1.5rem;
+    width: 100%;
+  }
+  
+  .tab-nav {
+    display: flex;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+    margin-bottom: 1.5rem;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 1px;
+  }
+  
+  .tab-btn {
+    background: transparent;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
+    font-size: 1rem;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    border-radius: 8px 8px 0 0;
+    white-space: nowrap;
+    font-family: 'Sora', sans-serif;
+  }
+  
+  .tab-btn:hover {
+    color: var(--text-primary, #F8F8F2);
+    background-color: rgba(99, 102, 241, 0.1);
+  }
+  
+  .tab-btn.active {
+    color: var(--primary-purple, #6366F1);
+    background: rgba(99, 102, 241, 0.1);
+  }
+  
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary-purple, #6366F1), var(--accent-purple, #7C3AED));
+    border-radius: 2px 2px 0 0;
+  }
+  
+  .tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  
+  .tab-content.active {
+    display: block;
+  }
+  
   .info-panel h2 {
     color: var(--text-headers, #A78BFA);
     margin-top: 20px;
@@ -1160,6 +1501,7 @@
     height: 17px;
   }
   
+  
   .back-button::before {
     content: '';
     position: absolute;
@@ -1412,46 +1754,259 @@
     from { opacity: 0; transform: translateY(5px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  
+  /* Concepts Tab UI Improvements */
+  .concepts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+    width: 100%;
+  }
+  
+  .concept-card {
+    background: linear-gradient(135deg, var(--navy-dark, #0F172A) 0%, var(--navy-medium, #1E293B) 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    overflow: hidden;
+    padding: 1.5rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .concept-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+    border-color: rgba(99, 102, 241, 0.4);
+  }
+  
+  .concept-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+  }
+  
+  .concept-header i {
+    font-size: 1.25rem;
+    color: var(--primary-light-purple, #A78BFA);
+    background: rgba(99, 102, 241, 0.1);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+  
+  .concept-header h3 {
+    font-family: 'Sora', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text-primary, #F8F8F2);
+    margin: 0;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+  
+  .concept-description {
+    margin-bottom: 1.25rem;
+  }
+  
+  .concept-description p {
+    color: var(--text-secondary, rgba(255, 255, 255, 0.9));
+    line-height: 1.6;
+    margin: 0;
+  }
+  
+  /* Not found concept styling */
+  .concept-card.concept-not-found {
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, var(--navy-medium, #1E293B) 100%);
+    border-left: 3px solid #e74c3c;
+  }
+  
+  .concept-card.concept-not-found .concept-header i {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+  }
+  
+  .concept-help-tip {
+    background-color: rgba(30, 30, 56, 0.5);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0 1.25rem;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+  }
+  
+  .help-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0.5rem;
+  }
+  
+  .help-header i {
+    color: var(--primary-light-purple, #A78BFA);
+  }
+  
+  .help-header h4 {
+    font-family: 'Sora', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary, #F8F8F2);
+    margin: 0;
+  }
+  
+  /* Files styling */
+  .concept-files {
+    margin-top: auto;
+    padding-top: 1rem;
+  }
+  
+  .files-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0.75rem;
+  }
+  
+  .files-header i {
+    color: var(--primary-light-purple, #A78BFA);
+  }
+  
+  .files-header h4 {
+    font-family: 'Sora', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary, #F8F8F2);
+    margin: 0;
+  }
+  
+  .files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 5px;
+  }
+  
+  .concept-file-item {
+    width: 100%;
+  }
+  
+  .concept-file-link, .unavailable-file {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    word-break: break-all;
+    width: 100%;
+  }
+  
+  .concept-file-link {
+    color: var(--text-accent, #A5B4FC);
+    text-decoration: none;
+    background-color: rgba(99, 102, 241, 0.1);
+  }
+  
+  .concept-file-link:hover {
+    background-color: rgba(99, 102, 241, 0.2);
+    color: var(--primary-purple, #6366F1);
+  }
+  
+  .concept-file-link i, .unavailable-file i {
+    flex-shrink: 0;
+    font-size: 0.9rem;
+  }
+  
+  .file-path-text {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+  
+  .unavailable-file {
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .files-explanation {
+    padding-top: 0.5rem;
+    font-style: italic;
+    border-top: 1px dashed rgba(99, 102, 241, 0.2);
+  }
+  
+  .files-explanation p {
+    margin: 0;
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
+    font-size: 0.9rem;
+  }
+  
+  /* Form styling improvements */
+  .form-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+  }
+  
+  .form-header i {
+    font-size: 1.25rem;
+    color: var(--primary-light-purple, #A78BFA);
+  }
+  
+  .form-header h3 {
+    font-family: 'Sora', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary, #F8F8F2);
+    margin: 0;
+  }
+  
+  .concept-analysis-form {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--navy-dark, #0F172A) 0%, var(--deep-purple, #1E1E38) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+  
+  .empty-state i {
+    font-size: 2.5rem;
+    color: var(--primary-light-purple, #A78BFA);
+    margin-bottom: 1rem;
+    opacity: 0.7;
+  }
+  
+  .empty-state p:first-of-type {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+  
+  .empty-state p:last-of-type {
+    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
+  }
 </style>
-
-<!-- Dropdown fix script -->
-<script>
-  // Direct, immediate approach to fix the user menu dropdown
-  document.addEventListener('DOMContentLoaded', function() {
-    const userMenuToggle = document.querySelector('.user-menu.compact .user-name');
-    const userMenu = document.querySelector('.user-menu.compact');
-    
-    if (userMenuToggle && userMenu) {
-      // Add click event directly to the user menu toggle button
-      userMenuToggle.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        userMenu.classList.toggle('active');
-        
-        console.log('User menu clicked, active state:', userMenu.classList.contains('active'));
-      });
-      
-      // Fix dropdown menu buttons to work with forms (like Sign Out)
-      const dropdownButtons = userMenu.querySelectorAll('.dropdown-menu button');
-      dropdownButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-          e.stopPropagation(); // Don't let the click close the dropdown
-          // Submit the closest form to handle Sign Out
-          const form = this.closest('form');
-          if (form) {
-            form.submit();
-          }
-        });
-      });
-      
-      // Close menu when clicking outside
-      document.addEventListener('click', function(e) {
-        if (!userMenu.contains(e.target) && userMenu.classList.contains('active')) {
-          userMenu.classList.remove('active');
-        }
-      });
-    } else {
-      console.error('User menu elements not found');
-    }
-  });
-</script>

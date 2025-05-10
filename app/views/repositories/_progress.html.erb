@@ -7,7 +7,7 @@
     <div class="progress-bar-container">
       <div class="progress-bar" data-progress-tracker-target="filesProgress" style="width: <%= files_progress_percentage %>%"></div>
     </div>
-    <div class="progress-percentage" data-progress-tracker-target="filesPercentage"><%= files_progress_percentage %>%</div>
+    <div class="progress-percentage" data-progress-tracker-target="filesPercentage" data-percentage="<%= files_progress_percentage %>%"></div>
   </div>
   
   <% if key_files_count > 0 %>
@@ -19,7 +19,74 @@
       <div class="progress-bar-container">
         <div class="progress-bar progress-bar-key" data-progress-tracker-target="keyFilesProgress" style="width: <%= key_files_progress_percentage %>%"></div>
       </div>
-      <div class="progress-percentage" data-progress-tracker-target="keyFilesPercentage"><%= key_files_progress_percentage %>%</div>
+      <div class="progress-percentage" data-progress-tracker-target="keyFilesPercentage" data-percentage="<%= key_files_progress_percentage %>%"></div>
     </div>
   <% end %>
+  
+  <!-- Achievement Badges -->
+  <div class="achievement-badges">
+    <% 
+      # Define some achievement badges based on progress
+      explorer_status = if files_progress_percentage >= 75
+                          "complete"
+                        elsif files_progress_percentage > 0
+                          "in-progress"
+                        else
+                          "locked"
+                        end
+      
+      key_explorer_status = if key_files_count > 0 && key_files_progress_percentage >= 75
+                              "complete"
+                            elsif key_files_count > 0 && key_files_progress_percentage > 0
+                              "in-progress"
+                            else
+                              "locked"
+                            end
+      
+      deep_diver_status = if files_progress_percentage >= 30
+                            "complete"
+                          elsif files_progress_percentage > 0
+                            "in-progress"
+                          else
+                            "locked"
+                          end
+    %>
+    
+    <!-- Explorer Badge -->
+    <div class="achievement-badge <%= explorer_status %>">
+      <div class="achievement-icon">
+        <i class="fas fa-compass"></i>
+      </div>
+      <div class="achievement-name">Explorer</div>
+      <div class="achievement-progress">
+        <%= files_progress_percentage >= 75 ? "Complete!" : "#{[files_progress_percentage, 75].min.to_i}/75%" %>
+      </div>
+    </div>
+    
+    <!-- Key Explorer Badge -->
+    <div class="achievement-badge <%= key_explorer_status %>">
+      <div class="achievement-icon">
+        <i class="fas fa-key"></i>
+      </div>
+      <div class="achievement-name">Key Explorer</div>
+      <div class="achievement-progress">
+        <% if key_files_count > 0 %>
+          <%= key_files_progress_percentage >= 75 ? "Complete!" : "#{[key_files_progress_percentage, 75].min.to_i}/75%" %>
+        <% else %>
+          No keys yet
+        <% end %>
+      </div>
+    </div>
+    
+    <!-- Deep Diver Badge -->
+    <div class="achievement-badge <%= deep_diver_status %>">
+      <div class="achievement-icon">
+        <i class="fas fa-search-plus"></i>
+      </div>
+      <div class="achievement-name">Deep Diver</div>
+      <div class="achievement-progress">
+        <%= files_progress_percentage >= 30 ? "Complete!" : "#{[files_progress_percentage, 30].min.to_i}/30%" %>
+      </div>
+    </div>
+  </div>
 </div> 

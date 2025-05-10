@@ -181,6 +181,7 @@
   font-size: 14px;
   line-height: 1.6;
   max-height: calc(80vh - 60px);
+  position: relative;
 }
 
 .ai-assistant-placeholder {
@@ -249,10 +250,102 @@
   background-color: rgba(30, 30, 56, 0.5);
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: 'Fira Code', monospace;
-  font-size: 13px;
-  color: #A5B4FC;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 0.9em;
+  color: #f8f8f2;
+}
+
+/* Inline code style */
+.ai-code-inline {
+  background-color: rgba(30, 30, 56, 0.5);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 0.9em;
+  color: #f8f8f2;
+  white-space: pre-wrap;
+}
+
+/* Multi-line code block style */
+.ai-code-block {
+  background-color: rgba(30, 30, 56, 0.8);
+  border-radius: 6px;
+  margin: 16px 0;
+  padding: 0;
   border: 1px solid rgba(99, 102, 241, 0.2);
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ai-code-block code {
+  display: block;
+  padding: 12px 16px;
+  overflow-x: auto;
+  line-height: 1.6;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 0.9em;
+  color: #f8f8f2;
+  background: transparent;
+  border-radius: 0;
+  white-space: pre;
+}
+
+/* Properly style lists */
+.ai-list {
+  margin: 12px 0 12px 16px;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+
+.ai-list-item {
+  margin: 6px 0;
+  padding-left: 4px;
+}
+
+/* Headings with different sizes for different header levels */
+.ai-heading {
+  font-weight: 600;
+  color: #a78bfa;
+  margin-top: 0.8em;
+  margin-bottom: 0.4em;
+  line-height: 1.3;
+}
+
+.ai-h1 {
+  font-size: 1.6em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.3);
+  margin-top: 1.5em;
+}
+
+.ai-h2 {
+  font-size: 1.4em;
+  padding-bottom: 0.2em;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.2);
+  margin-top: 1.2em;
+}
+
+.ai-h3 {
+  font-size: 1.2em;
+}
+
+.ai-h4 {
+  font-size: 1.1em;
+}
+
+.ai-h5 {
+  font-size: 1em;
+}
+
+/* Bold and italic text */
+.ai-bold {
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.ai-italic {
+  font-style: italic;
+  color: #cbd5e1;
 }
 
 .ai-context-content pre {
@@ -399,11 +492,21 @@
   color: rgba(255, 255, 255, 0.9);
 }
 
+/* Tab content styling */
 .ai-tab-content {
-  display: none;
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
+  width: 100%;
 }
 
 .ai-tab-content.active {
+  position: static;
+  opacity: 1;
+  visibility: visible;
   display: block;
   animation: fadeIn 0.3s ease forwards;
 }
@@ -467,4 +570,171 @@
 
 .ai-static-info a:hover {
   text-decoration: underline;
+}
+
+/* Feedback component styles */
+.ai-feedback {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(99, 102, 241, 0.2);
+  text-align: center;
+}
+
+.ai-feedback-question {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 10px;
+}
+
+.ai-feedback-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ai-feedback-button {
+  background-color: rgba(99, 102, 241, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-feedback-button:hover {
+  background-color: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.ai-feedback-button.helpful {
+  border-color: rgba(52, 211, 153, 0.5);
+}
+
+.ai-feedback-button.helpful:hover,
+.ai-feedback-button.helpful.selected {
+  background-color: rgba(52, 211, 153, 0.2);
+  border-color: rgba(52, 211, 153, 0.7);
+  color: rgba(52, 211, 153, 0.9);
+}
+
+.ai-feedback-button.not-helpful {
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
+.ai-feedback-button.not-helpful:hover,
+.ai-feedback-button.not-helpful.selected {
+  background-color: rgba(248, 113, 113, 0.2);
+  border-color: rgba(248, 113, 113, 0.7);
+  color: rgba(248, 113, 113, 0.9);
+}
+
+.ai-feedback-textarea {
+  display: none;
+  margin-top: 10px;
+}
+
+.ai-feedback-textarea.visible {
+  display: block;
+}
+
+.ai-feedback-textarea textarea {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+  color: white;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 80px;
+  font-family: 'Inter', sans-serif;
+}
+
+.ai-feedback-submit {
+  background-color: rgba(99, 102, 241, 0.2);
+  color: #A5B4FC;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 10px;
+  transition: all 0.2s;
+}
+
+.ai-feedback-submit:hover {
+  background-color: rgba(99, 102, 241, 0.3);
+  border-color: rgba(99, 102, 241, 0.6);
+}
+
+.ai-feedback-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-feedback-thanks {
+  display: none;
+  color: #A5B4FC;
+  font-size: 13px;
+  margin-top: 10px;
+  padding: 8px;
+  background-color: rgba(99, 102, 241, 0.1);
+  border-radius: 4px;
+}
+
+.ai-feedback-thanks.visible {
+  display: block;
+}
+
+.ai-feedback-stats {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.ai-feedback-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-feedback-stat-helpful {
+  color: rgba(52, 211, 153, 0.8);
+}
+
+.ai-feedback-stat-not-helpful {
+  color: rgba(248, 113, 113, 0.8);
+}
+
+/* Add spacing to key file stars in AI assistant panel */
+.ai-context-content .key-file-star,
+.ai-tab-content .key-file-star {
+  margin-left: 0.5rem;
+  margin-right: 0.75rem;
+  padding-left: 0.25rem;
+  display: inline-block;
+}
+
+/* Ensure list items with stars have proper padding */
+.ai-context-content ul li,
+.ai-tab-content ul li,
+.ai-context-content ol li,
+.ai-tab-content ol li {
+  padding-left: 0.25rem;
+  margin-left: 0.25rem;
+}
+
+.ai-context-content .key-file-item,
+.ai-tab-content .key-file-item {
+  padding-left: 0.5rem;
+  border-radius: 4px;
 } 

@@ -86,8 +86,31 @@ export default class extends Controller {
       document.querySelectorAll('.file-item a.current-file').forEach(el => {
         el.classList.remove('current-file');
       });
-      fileLink.classList.add('current-file');
-      fileLink.classList.add('viewed-file'); // Also mark as viewed
+      
+      // If it's a traditional file link in the file tree
+      if (fileLink.tagName === 'A') {
+        fileLink.classList.add('current-file');
+        fileLink.classList.add('viewed-file'); // Also mark as viewed
+      }
+      
+      // Handle key file items (both in key files tab and in concept files)
+      const keyFileItems = document.querySelectorAll(`.key-file-item[data-file-id="${fileId}"]`);
+      keyFileItems.forEach(item => {
+        item.classList.add('viewed');
+        
+        // If this element has a Turbo frame, request an update to show viewed status
+        if (item.dataset.turboFrame) {
+          // Send a Turbo Stream update to mark this file as viewed
+          fetch(`/repository_files/${fileId}/mark_viewed`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'text/vnd.turbo-stream.html',
+              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            }
+          });
+        }
+      });
       
       // Expand all parent directories of the selected file
       let parentElement = fileLink.closest('.dir-contents');

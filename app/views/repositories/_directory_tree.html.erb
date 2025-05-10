@@ -2,16 +2,19 @@
 <% tree.each do |name, content| %>
   <% if content.is_a?(Hash) && content[:file_id].nil? %>
     <%# This is a directory %>
-    <div class="dir-item" data-file-explorer-target="directory" data-parent-path="<%= parent_path %>">
-      <div class="dir-header" data-file-explorer-target="dirHeader">
-        <span class="dir-toggle" data-file-explorer-target="toggle">+</span>
+    <% dir_path = parent_path.present? ? "#{parent_path}/#{name}" : name %>
+    <div class="directory" data-file-explorer-target="directory" data-path="<%= dir_path %>">
+      <div class="directory-label" data-file-explorer-target="dirHeader" data-path="<%= dir_path %>">
+        <i class="fas fa-caret-right"></i>
+        <i class="fas fa-folder"></i>
+        <i class="fas fa-folder-open"></i>
         <span class="dir-name"><%= name %></span>
       </div>
-      <div class="dir-contents" data-file-explorer-target="dirContents">
+      <div class="directory-children" data-file-explorer-target="dirContents">
         <%= render partial: 'directory_tree', locals: { 
           tree: content, 
           level: level + 1,
-          parent_path: parent_path.present? ? "#{parent_path}/#{name}" : name
+          parent_path: dir_path
         } %>
       </div>
     </div>
@@ -20,17 +23,56 @@
     <% file_id = content[:file_id] %>
     <% viewed = @viewed_file_ids&.include?(file_id) %>
     <% is_key = content[:is_key_file] %>
+    <% file_path = parent_path.present? ? "#{parent_path}/#{name}" : name %>
+    <% file_ext = File.extname(name).downcase %>
+    
     <div class="file-item">
       <%= link_to "#", 
           class: viewed ? "viewed-file" : "",
-          title: is_key ? "Key file (marked as particularly important)" : nil,
+          title: is_key ? "Key file: Identified as particularly important for understanding this codebase" : nil,
           data: { 
-            path: parent_path.present? ? "#{parent_path}/#{name}" : name,
+            path: file_path,
             file_id: file_id,
             action: "click->inline-editor#showFile"
           } do %>
         <% if is_key %>
-          <span class="key-file-star" title="Only admins can mark key files">★</span>
+          <i class="fas fa-star key-file-star" title="Key file: Identified as particularly important for understanding this codebase"></i>
+        <% else %>
+          <%# Choose icon based on file extension %>
+          <% case file_ext %>
+          <% when ".rb", ".rake" %>
+            <i class="fas fa-gem"></i>
+          <% when ".js" %>
+            <i class="fab fa-js"></i>
+          <% when ".ts" %>
+            <i class="fab fa-js-square"></i>
+          <% when ".py" %>
+            <i class="fab fa-python"></i>
+          <% when ".html", ".erb" %>
+            <i class="fas fa-code"></i>
+          <% when ".css", ".scss" %>
+            <i class="fab fa-css3"></i>
+          <% when ".json" %>
+            <i class="fas fa-brackets-curly"></i>
+          <% when ".md" %>
+            <i class="fas fa-file-alt"></i>
+          <% when ".go" %>
+            <i class="fas fa-file-code"></i>
+          <% when ".c", ".cpp", ".h" %>
+            <i class="fas fa-file-code"></i>
+          <% when ".java" %>
+            <i class="fab fa-java"></i>
+          <% when ".php" %>
+            <i class="fab fa-php"></i>
+          <% when ".rs" %>
+            <i class="fas fa-file-code"></i>
+          <% when ".yml", ".yaml" %>
+            <i class="fas fa-file-alt"></i>
+          <% when ".sh", ".bash" %>
+            <i class="fas fa-terminal"></i>
+          <% else %>
+            <i class="fas fa-file"></i>
+          <% end %>
         <% end %>
         <span class="file-name-text"><%= name %></span>
       <% end %>

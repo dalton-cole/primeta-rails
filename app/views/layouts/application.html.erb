@@ -88,7 +88,8 @@
          data-ai-assistant-current-repository-value="true"
          <% else %>
          data-ai-assistant-static-info-value="true"
-         <% end %>>
+         <% end %>
+         data-ai-assistant-is-admin-value="<%= current_user&.admin? || false %>">
       <button class="ai-assistant-toggle" data-action="click->ai-assistant#toggle" title="Toggle AI Assistant">
         <div class="ai-toggle-icon">
           <img src="/images/icon.svg" width="24" height="24" alt="Primeta AI" />
@@ -110,8 +111,6 @@
         <div class="ai-assistant-tabs">
           <div class="ai-assistant-tab active" data-tab="context" data-action="click->ai-assistant#switchTab">Context</div>
           <div class="ai-assistant-tab" data-tab="challenges" data-action="click->ai-assistant#switchTab">Challenges</div>
-          <div class="ai-assistant-tab" data-tab="patterns" data-action="click->ai-assistant#switchTab">Patterns</div>
-          <div class="ai-assistant-tab" data-tab="visualizations" data-action="click->ai-assistant#switchTab">Visualize</div>
         </div>
         
         <!-- Tab contents -->
@@ -132,14 +131,6 @@
               <div class="ai-static-info">
                 <h3>About Primeta.ai</h3>
                 <p>Primeta.ai is the fastest way to learn from real-world codebases. Our AI-powered platform helps you understand complex code and build your programming knowledge.</p>
-                
-                <h4>Contact Information</h4>
-                <ul>
-                  <li><i class="bi bi-envelope"></i> <a href="mailto:dalton@deployto.dev">dalton@deployto.dev</a></li>
-                  <li><i class="bi bi-linkedin"></i> <a href="https://www.linkedin.com/in/daltoncole/" target="_blank">linkedin.com/in/daltoncole</a></li>
-                </ul>
-                
-                <h4>Getting Started</h4>
                 <p>Explore our <a href="/repositories">repository collection</a> to start learning from real code.</p>
               </div>
             <% else %>
@@ -150,73 +141,17 @@
           </div>
           
           <!-- Learning Challenges tab content -->
-          <div class="ai-tab-content hidden" data-tab="challenges" data-ai-assistant-target="challengesContent">
+          <div class="ai-tab-content" data-tab="challenges" data-ai-assistant-target="challengesContent">
             <% if controller_name != 'repository_files' && (controller_name != 'repositories' || !@repository) %>
               <!-- Static information for non-repository pages -->
               <div class="ai-static-info">
                 <h3>Learning with Primeta</h3>
                 <p>Our AI generates tailored coding challenges to test your understanding of the codebase you're exploring.</p>
-                
-                <h4>Platform Features</h4>
-                <ul>
-                  <li><strong>Interactive Challenges:</strong> Test your understanding with targeted questions</li>
-                  <li><strong>Pattern Recognition:</strong> Learn common design patterns from real code</li>
-                  <li><strong>Visual Learning:</strong> Visualize code structure and relationships</li>
-                </ul>
-                
                 <p>Select a file in a repository to start exploring challenges!</p>
               </div>
             <% else %>
               <div class="ai-assistant-placeholder">
                 <p>Select a file to explore learning challenges that test your understanding.</p>
-              </div>
-            <% end %>
-          </div>
-          
-          <!-- Related Patterns tab content -->
-          <div class="ai-tab-content hidden" data-tab="patterns" data-ai-assistant-target="patternsContent">
-            <% if controller_name != 'repository_files' && (controller_name != 'repositories' || !@repository) %>
-              <!-- Static information for non-repository pages -->
-              <div class="ai-static-info">
-                <h3>Design Patterns Library</h3>
-                <p>Understanding design patterns is key to becoming a better programmer. Primeta helps you identify patterns in real-world code.</p>
-                
-                <h4>Popular Design Patterns</h4>
-                <ul>
-                  <li><strong>MVC Architecture</strong> - Separating data, interface, and control logic</li>
-                  <li><strong>Factory Pattern</strong> - Creating objects without specifying the exact class</li>
-                  <li><strong>Observer Pattern</strong> - Defining a subscription mechanism for objects</li>
-                </ul>
-                
-                <p>Browse our repositories to see these patterns in action!</p>
-              </div>
-            <% else %>
-              <div class="ai-assistant-placeholder">
-                <p>Select a file to discover related design patterns in the codebase.</p>
-              </div>
-            <% end %>
-          </div>
-          
-          <!-- Visualizations tab content -->
-          <div class="ai-tab-content hidden" data-tab="visualizations" data-ai-assistant-target="visualizationsContent">
-            <% if controller_name != 'repository_files' && (controller_name != 'repositories' || !@repository) %>
-              <!-- Static information for non-repository pages -->
-              <div class="ai-static-info">
-                <h3>Code Visualization</h3>
-                <p>Primeta helps you understand code structure through conceptual visualizations that make complex relationships clear.</p>
-                
-                <h4>Support</h4>
-                <p>Having trouble with the platform? We're here to help!</p>
-                <ul>
-                  <li><i class="bi bi-envelope"></i> <a href="mailto:dalton@deployto.dev">dalton@deployto.dev</a></li>
-                  <li><i class="bi bi-linkedin"></i> <a href="https://www.linkedin.com/in/daltoncole/" target="_blank">linkedin.com/in/daltoncole</a></li>
-                </ul>
-                
-                <p><em>Primeta.ai - Learn faster by understanding real-world code.</em></p>
-              </div>
-            <% else %>
-              <div class="ai-assistant-placeholder">
-                <p>Select a file to see conceptual visualizations of its architecture.</p>
               </div>
             <% end %>
           </div>
@@ -314,7 +249,15 @@
         
         // Helper function to format text
         function formatExplanation(text) {
-          return text
+          // First handle headings
+          let result = text
+            .replace(/^#{1}\s+(.*?)$/gm, '<h1 style="font-size: 1.5rem; margin: 1rem 0 0.5rem; color: #fff;">$1</h1>')
+            .replace(/^#{2}\s+(.*?)$/gm, '<h2 style="font-size: 1.3rem; margin: 1rem 0 0.5rem; color: #fff;">$1</h2>')
+            .replace(/^#{3}\s+(.*?)$/gm, '<h3 style="font-size: 1.1rem; margin: 0.8rem 0 0.4rem; color: #fff;">$1</h3>')
+            .replace(/^#{4,6}\s+(.*?)$/gm, '<h4 style="font-size: 1rem; margin: 0.7rem 0 0.3rem; color: #fff;">$1</h4>');
+            
+          // Then handle other markdown formatting  
+          return result
             .replace(/\n\n/g, '<br><br>')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')

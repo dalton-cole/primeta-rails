@@ -1,1 +1,17 @@
- 
+/* File Explorer Icon Fix */
+
+/* Hide both open and closed folder icons by default */
+.directory-label i.fa-folder,
+.directory-label i.fa-folder-open {
+  display: none;
+}
+
+/* Show closed folder icon when directory is not expanded */
+.directory-label:not(.expanded) i.fa-folder {
+  display: inline-block;
+}
+
+/* Show open folder icon when directory is expanded */
+.directory-label.expanded i.fa-folder-open {
+  display: inline-block;
+} 

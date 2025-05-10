@@ -26,6 +26,9 @@ gem "omniauth-rails_csrf_protection"
 # Git integration
 gem "git" # Simpler Git integration without native dependencies
 
+# Pagination
+gem "kaminari"
+
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
 
