@@ -19,11 +19,14 @@ Rails.application.routes.draw do
   
   # Repository routes
   resources :repositories, only: [:index, :show, :new, :create] do
+    member do
+      post :sync
+      post :extract_key_concepts
+      post :analyze_concept
+      get :tree
+    end
     resources :repository_files, only: [:index], controller: 'repositories/repository_files'
     post :track_time, on: :member
-    post :sync, on: :member
-    post :extract_key_concepts, on: :member
-    post :analyze_concept, on: :member
     get :progress, on: :member
   end
   

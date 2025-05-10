@@ -29,8 +29,9 @@
       <h3><i class="fas fa-folder"></i> Files</h3>
       
       <% if @repository.repository_files.any? %>
-        <div class="file-explorer" data-controller="file-explorer">
+        <div class="file-explorer" data-controller="file-explorer" data-file-explorer-repository-id-value="<%= @repository.id %>">
           <div class="file-tree">
+            <%# Only the root directory is rendered; subdirectories are loaded on demand %>
             <%= render partial: 'directory_tree', locals: { tree: @directory_structure, level: 0, parent_path: '' } %>
           </div>
         </div>
@@ -1301,12 +1302,10 @@
   .concept-analysis-form {
     margin-bottom: 1.5rem;
     padding: 20px;
-    background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+    background: linear-gradient(135deg, var(--navy-dark, #0F172A) 0%, var(--deep-purple, #1E1E38) 100%);
     border: 1px solid rgba(99, 102, 241, 0.2);
-    border-radius: 8px;
+    border-radius: 12px;
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-    width: 100%;
-    box-sizing: border-box;
   }
   
   .analyze-concept-form {
@@ -1963,5 +1962,12 @@
   
   .empty-state p:last-of-type {
     color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
+  }
+  
+  .directory turbo-frame {
+    display: none;
+  }
+  .directory.expanded > turbo-frame {
+    display: block;
   }
 </style>

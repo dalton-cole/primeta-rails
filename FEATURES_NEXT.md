@@ -62,6 +62,32 @@
 
 ---
 
+## 6. Job Board
+**Idea:**
+- Provide a curated job board for developers, featuring roles from companies interested in hiring Primeta users or those with open source experience.
+
+**How to Execute:**
+- Add a Job Board page listing open positions, with filters for tech stack, remote/on-site, and experience level.
+- Allow companies to submit job postings (with moderation/approval flow).
+- Integrate with user profiles to highlight relevant jobs based on explored repositories or achievements.
+- Optionally, allow users to apply directly or link to external application pages.
+- Track job applications and provide analytics for companies.
+
+---
+
+## 7. Paddle Subscription Integration
+**Idea:**
+- Integrate Paddle as the payment processor for handling user subscriptions, billing, and invoicing.
+
+**How to Execute:**
+- Set up Paddle account and configure webhooks for subscription events (signup, renewal, cancellation, payment failure).
+- Implement subscription management UI for users (upgrade, downgrade, cancel, view invoices).
+- Sync Paddle subscription status with user roles/access in the app.
+- Ensure compliance with tax/VAT requirements and global payments.
+- Add admin dashboard for managing subscriptions and viewing analytics.
+
+---
+
 ## General Notes
 - Prioritize features that increase engagement and sharing.
 - Use analytics to measure feature adoption and iterate.

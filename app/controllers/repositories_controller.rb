@@ -148,6 +148,25 @@ class RepositoriesController < ApplicationController
     }
   end
 
+  # Return the contents of a directory for lazy loading (AJAX)
+  def tree
+    @repository = Repository.find(params[:id])
+    @repository_files = @repository.repository_files.includes(:file_views)
+    @viewed_file_ids = current_user.file_views.where(repository_file_id: @repository_files.pluck(:id)).pluck(:repository_file_id).to_set
+
+    # Get the requested path (empty string means root)
+    path = params[:path].to_s
+
+    # Build a directory structure for just the requested path
+    structure = build_directory_structure(@repository_files)
+    tree = path.blank? ? structure : path.split('/').reduce(structure) { |acc, part| acc[part] if acc }
+    tree ||= {}
+
+    # Render the directory_tree partial inside a Turbo Frame
+    level = params[:level].present? ? params[:level].to_i : 1
+    render partial: 'directory_tree_frame', locals: { tree: tree, parent_path: path, level: level }, layout: false
+  end
+
   private
   
   def set_repository

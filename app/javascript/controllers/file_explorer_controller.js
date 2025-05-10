@@ -3,6 +3,7 @@ import { Controller } from "@hotwired/stimulus";
 // Connects to data-controller="file-explorer"
 export default class extends Controller {
   static targets = ["directory", "dirHeader", "dirContents"];
+  static values = { repositoryId: Number };
 
   connect() {
     console.log("File explorer controller connected");
@@ -73,78 +74,40 @@ export default class extends Controller {
   toggleDirectory(event) {
     event.preventDefault();
     event.stopPropagation();
-    
-    console.log("📁 Directory clicked");
-    
-    // Find the directory container and header
+
     const header = event.currentTarget;
     const directory = header.closest(".directory");
-    
-    if (!directory) {
-      console.error("Could not find parent directory element");
-      return;
-    }
-    
-    // Get the directory contents
-    const dirContents = directory.querySelector('.directory-children');
-    if (!dirContents) {
-      console.error("Could not find directory contents element");
-      return;
-    }
-    
-    // Log initial state of directory
-    console.log("📁 Directory initial state:", {
-      hasExpandedClass: directory.classList.contains("expanded"),
-      headerHasExpandedClass: header.classList.contains("expanded"),
-      contentsDisplayStyle: dirContents.style.display
-    });
-    
-    // Toggle expanded state
+    if (!directory) return;
+
     const isExpanded = !directory.classList.contains("expanded");
-    
-    // Toggle the expanded class on both the directory and header
     directory.classList.toggle("expanded", isExpanded);
     header.classList.toggle("expanded", isExpanded);
-    
-    // Log after toggling classes
-    console.log("📁 Directory after class toggle:", {
-      isExpanded: isExpanded,
-      hasExpandedClass: directory.classList.contains("expanded"),
-      headerHasExpandedClass: header.classList.contains("expanded")
-    });
-    
-    // Toggle display of directory contents
+
+    // Only load children if expanding
     if (isExpanded) {
-      // Simply display content without animations
-      dirContents.style.display = 'block';
-      
-      // Clear any inline max-height to let it expand naturally
-      dirContents.style.maxHeight = 'none';
-      
-      // Log expanded state
-      console.log("📁 Directory expanded, display:", dirContents.style.display);
-      
-      // Ensure parent container scrolls to accommodate new content
-      this.updateScrollContainer();
-    } else {
-      // Immediately hide when collapsed, no animations
-      dirContents.style.display = 'none';
-      
-      // Log collapsed state
-      console.log("📁 Directory collapsed, display:", dirContents.style.display);
-      
-      // Update scroll container after hiding content
-      this.updateScrollContainer();
+      const repoId = this.repositoryIdValue;
+      const dirPath = directory.dataset.path;
+      const frameId = `dir_${dirPath.replaceAll('/', '_')}`;
+      const frame = document.getElementById(frameId);
+      // Determine the current level from the directory's style or data attribute
+      let level = 1;
+      const marginLeft = directory.style.marginLeft;
+      if (marginLeft) {
+        const match = marginLeft.match(/(\d+)/);
+        if (match) {
+          level = Math.floor(parseInt(match[1], 10) / 16);
+        }
+      }
+      // Children should be one level deeper
+      const childLevel = level + 1;
+      if (frame && !frame.src) {
+        frame.src = `/repositories/${repoId}/tree?path=${encodeURIComponent(dirPath)}&level=${childLevel}`;
+      }
     }
-    
-    // Update caret icon explicitly to ensure it rotates correctly
+
+    // Update caret icon
     const caretIcon = header.querySelector('.fa-caret-right');
     if (caretIcon) {
-      // Use CSS transform instead of inline style for better performance
-      // The CSS classes will handle the rotation
-      console.log("📁 Setting caret rotation for state:", isExpanded ? "expanded" : "collapsed");
-      
-      // Force a reflow to make sure the CSS transition happens
       void caretIcon.offsetWidth;
     }
   }

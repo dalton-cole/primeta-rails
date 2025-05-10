@@ -3,19 +3,15 @@
   <% if content.is_a?(Hash) && content[:file_id].nil? %>
     <%# This is a directory %>
     <% dir_path = parent_path.present? ? "#{parent_path}/#{name}" : name %>
-    <div class="directory" data-file-explorer-target="directory" data-path="<%= dir_path %>">
-      <div class="directory-label" data-file-explorer-target="dirHeader" data-path="<%= dir_path %>">
+    <div class="directory" data-path="<%= dir_path %>" style="margin-left: <%= level * 16 %>px;">
+      <div class="directory-label" data-action="click->file-explorer#toggleDirectory">
         <i class="fas fa-caret-right"></i>
         <i class="fas fa-folder folder-icon"></i>
         <span class="dir-name"><%= name %></span>
       </div>
-      <div class="directory-children" data-file-explorer-target="dirContents">
-        <%= render partial: 'directory_tree', locals: { 
-          tree: content, 
-          level: level + 1,
-          parent_path: dir_path
-        } %>
-      </div>
+      <turbo-frame id="dir_<%= dir_path.parameterize(separator: '_') %>">
+        <!-- Empty by default; src will be set on expand by JS -->
+      </turbo-frame>
     </div>
   <% else %>
     <%# This is a file %>
@@ -25,7 +21,7 @@
     <% file_path = parent_path.present? ? "#{parent_path}/#{name}" : name %>
     <% file_ext = File.extname(name).downcase %>
     
-    <div class="file-item">
+    <div class="file-item" style="margin-left: <%= (level + 1) * 16 %>px;">
       <%= link_to "#", 
           class: viewed ? "viewed-file" : "",
           title: is_key ? "Key file: Identified as particularly important for understanding this codebase" : nil,
