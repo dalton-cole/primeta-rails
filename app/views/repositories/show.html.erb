@@ -28,7 +28,7 @@
     <div class="sidebar">
       <h3><i class="fas fa-folder"></i> Files</h3>
       
-      <% if @repository.repository_files.any? %>
+      <% if @repository.try(:repository_files).present? %>
         <div class="file-explorer" data-controller="file-explorer" data-file-explorer-repository-id-value="<%= @repository.id %>">
           <div class="file-tree">
             <%# Only the root directory is rendered; subdirectories are loaded on demand %>
@@ -43,7 +43,7 @@
     </div>
     
     <div class="content">
-      <div class="info-panel" data-inline-editor-target="infoPanel">
+      <div class="info-panel" data-inline-editor-target="infoPanel" style="height: 100%; overflow-y: auto;">
         <div class="repository-header">
           <% if @repository.github_repo? %>
             <div class="github-info">
@@ -104,10 +104,10 @@
             <h2>Key Files</h2>
             <p>These files have been identified as particularly important to understand the codebase:</p>
             
-            <% if @key_files_from_concepts.any? %>
+            <% if @key_files_from_concepts.try(:any?) %>
               <div class="key-files-list">
                 <% @key_files_from_concepts.each do |file| %>
-                  <% viewed = @viewed_file_ids&.include?(file.id) %>
+                  <% viewed = file.present? && @viewed_file_ids.try(:include?, file.id) %>
                   <%= render 'key_file_item', file: file, viewed: viewed %>
                 <% end %>
               </div>
@@ -151,17 +151,17 @@
               </div>
             <% end %>
             
-            <% if @key_concepts.present? %>
+            <% if @key_concepts.try(:any?) %>
               <div class="concepts-grid">
                 <% @key_concepts.each do |concept| %>
-                  <% not_found = concept.description&.include?("could not be found") || concept.description&.include?("does not appear to be implemented") %>
+                  <% not_found = concept.try(:description).to_s.include?("could not be found") || concept.try(:description).to_s.include?("does not appear to be implemented") %>
                   <div class="concept-card <%= 'concept-not-found' if not_found %>">
                     <div class="concept-header">
                       <i class="fas <%= not_found ? 'fa-question-circle' : 'fa-puzzle-piece' %>"></i>
-                      <h3><%= concept.name %></h3>
+                      <h3><%= concept.try(:name) %></h3>
                     </div>
                     <div class="concept-description">
-                      <p><%= concept.description %></p>
+                      <p><%= concept.try(:description) %></p>
                     </div>
                     <% if not_found %>
                       <div class="concept-help-tip">
@@ -173,7 +173,7 @@
                         <code>src/consensus/, src/validation/, src/mining/</code>
                       </div>
                     <% end %>
-                    <% if concept.key_files.present? %>
+                    <% if concept.try(:key_files).present? %>
                       <div class="concept-files">
                         <div class="files-header">
                           <i class="fas fa-file-code"></i>
@@ -181,12 +181,12 @@
                         </div>
                         <div class="files-list">
                           <% concept.key_files.each do |file_path| %>
-                            <% file = @repository.repository_files.find_by(path: file_path) %>
-                            <%= render 'concept_file_item', file: file, file_path: file_path, viewed_file_ids: @viewed_file_ids %>
+                            <% file = @repository.try(:repository_files).try(:find_by, path: file_path) %>
+                            <%= render 'concept_file_item', file: file, file_path: file_path, viewed_file_ids: @viewed_file_ids if file_path.present? %>
                           <% end %>
                         </div>
                         <div class="files-explanation">
-                          <p><em><%= concept.key_files_explanation %></em></p>
+                          <p><em><%= concept.try(:key_files_explanation) %></em></p>
                         </div>
                       </div>
                     <% end %>
@@ -202,10 +202,9 @@
             <% end %>
           </div>
         </div>
-        
       </div>
       
-      <div class="editor-container" data-inline-editor-target="editorContainer" style="display: none;">
+      <div class="editor-container" data-inline-editor-target="editorContainer" style="display: none; flex-direction: column; height: 100%; width: 100%;">
         <!-- Editor content will be dynamically generated -->
       </div>
     </div>
@@ -598,209 +597,10 @@
     display: grid;
     grid-template-columns: 280px minmax(0, 1fr);
     gap: 1rem;
-    flex: 1;
     overflow: hidden;
     width: 100%;
     height: calc(100vh - 140px);
     box-sizing: border-box;
-  }
-  
-  .sidebar {
-    background-color: #1E1E3F;
-    border-radius: 8px;
-    padding: 0;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-height: 0; /* Important for Firefox */
-    min-width: 0; /* Important for Firefox */
-    width: 280px; /* Fixed width to match grid definition */
-    box-sizing: border-box;
-  }
-  
-  .sidebar h3 {
-    color: #F5F7FA;
-    margin: 0;
-    padding: 12px;
-    border-bottom: 1px solid #333;
-    flex-shrink: 0;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .file-explorer {
-    flex: 1;
-    overflow: hidden;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    height: calc(100% - 43px); /* Height of sidebar minus h3 height */
-    min-height: 0; /* Important for Firefox */
-    width: 100%;
-  }
-  
-  .file-tree {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 8px 12px 12px 12px;
-    margin: 0;
-    height: 100%;
-    max-height: 100%;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .dir-item {
-    margin-bottom: 0.25rem;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .dir-header {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    padding: 0.25rem 0;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .dir-toggle {
-    width: 16px;
-    height: 16px;
-    margin-right: 5px;
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 12px;
-    border: 1px solid #444;
-    border-radius: 2px;
-    background-color: #252550;
-    flex-shrink: 0;
-  }
-  
-  .dir-name {
-    color: #aaa;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-    max-width: calc(100% - 25px);
-    box-sizing: border-box;
-  }
-  
-  .dir-contents {
-    padding-left: 0.75rem;
-    display: none;
-    max-height: none;
-    height: auto;
-    position: static;
-    width: calc(100% - 0.75rem);
-    box-sizing: border-box;
-  }
-  
-  .dir-item.expanded > .dir-contents {
-    display: block;
-  }
-  
-  .dir-item.expanded > .dir-header .dir-toggle {
-    background-color: #333366;
-  }
-  
-  .file-item {
-    padding: 0.25rem 0 0.25rem 0.75rem;
-    position: static;
-    margin-bottom: 2px;
-    width: 100%;
-  }
-  
-  .file-item a {
-    text-decoration: none;
-    color: #F5F7FA;
-    display: flex;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 4px 8px;
-    border-radius: 3px;
-    transition: background-color 0.2s ease;
-    width: calc(100% - 16px); /* Account for padding */
-    box-sizing: border-box;
-    align-items: center;
-  }
-  
-  /* Ensure star icon doesn't get squished */
-  .key-file-star {
-    color: #f1c40f;
-    margin-right: 4px;
-    font-size: 1.1em;
-    flex-shrink: 0;
-  }
-  
-  /* File name text that can be truncated */
-  .file-name-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .file-item a.viewed-file {
-    color: #2ecc71; /* Green color for viewed files */
-    font-weight: 500;
-  }
-  
-  .file-item a.current-file {
-    background-color: #2979FF33; /* Transparent blue background */
-    color: #3498db; /* Blue text */
-    font-weight: 600;
-    border-left: 2px solid #3498db; /* Blue left border */
-    position: static; /* Changed from relative to static */
-    box-shadow: none; /* Removed shadow that could affect layout */
-    margin-left: -2px; /* Compensate for the border */
-    padding-left: 4px; /* Adjusted padding to account for border */
-  }
-  
-  .file-item a:hover {
-    text-decoration: underline;
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  
-  .file-item a .key-file-star {
-    display: inline-block;
-    transform: translateY(1px);
-  }
-  
-  .key-file-toggle {
-    display: flex;
-    align-items: center;
-    background-color: #252550;
-    border: 1px solid #444;
-    border-radius: 4px;
-    padding: 5px 10px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    margin-left: 15px;
-    transition: all 0.2s ease;
-    color: #F5F7FA;
-  }
-  
-  .key-file-toggle:hover {
-    background-color: #333366;
-  }
-  
-  .key-file-toggle.active {
-    background-color: #413B00;
-    border-color: #f1c40f;
-  }
-  
-  .key-file-toggle .key-file-star {
-    margin-right: 5px;
   }
   
   .content {
@@ -832,12 +632,94 @@
     box-sizing: border-box;
   }
   
-  .repository-title {
-    font-size: 1.8rem;
-    margin: 0 0 0.5rem 0;
+  .editor-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+  }
+  
+  .editor-header {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex-shrink: 0;
+  }
+  
+  .file-title-container {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+  
+  .back-button {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: linear-gradient(135deg, var(--primary-dark-purple, #4F46E5) 0%, var(--accent-purple, #7C3AED) 100%);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 8px rgba(67, 56, 202, 0.3);
+    font-family: 'Inter', sans-serif;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .back-button:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 12px rgba(67, 56, 202, 0.4);
+  }
+  
+  .back-button:hover .back-icon {
+    transform: scale(1.15);
+  }
+  
+  .back-button:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(67, 56, 202, 0.2);
+  }
+  
+  .back-icon {
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+    color: rgba(255, 255, 255, 0.9);
+    width: 17px;
+    height: 17px;
+  }
+  
+  
+  .back-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s ease;
+  }
+  
+  .back-button:hover::before {
+    transform: translateX(100%);
+  }
+  
+  .file-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    word-break: break-all;
     color: var(--text-primary, #F8F8F2);
     font-family: 'Sora', sans-serif;
-    font-weight: 600;
   }
   
   .repository-header {
@@ -1195,9 +1077,6 @@
   .key-concepts li.concept-not-found {
     background-color: rgba(231, 76, 60, 0.1);
     border-left: 3px solid #e74c3c;
-    padding-left: 15px;
-    margin-left: -15px;
-    border-radius: 3px;
   }
   
   .key-concepts li.concept-not-found strong {
@@ -1391,550 +1270,6 @@
     left: 100%;
   }
   
-  .editor-container {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
-    width: 100%;
-  }
-  
-  .editor-header {
-    margin-bottom: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    flex-shrink: 0;
-  }
-  
-  .file-title-container {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-  }
-  
-  .back-button {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    background: linear-gradient(135deg, var(--primary-dark-purple, #4F46E5) 0%, var(--accent-purple, #7C3AED) 100%);
-    color: white;
-    border: none;
-    border-radius: 50px;
-    padding: 0.6rem 1rem;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow: 0 4px 8px rgba(67, 56, 202, 0.3);
-    font-family: 'Inter', sans-serif;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .back-button:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 6px 12px rgba(67, 56, 202, 0.4);
-  }
-  
-  .back-button:hover .back-icon {
-    transform: scale(1.15);
-  }
-  
-  .back-button:active {
-    transform: translateY(1px);
-    box-shadow: 0 2px 4px rgba(67, 56, 202, 0.2);
-  }
-  
-  .back-icon {
-    flex-shrink: 0;
-    transition: transform 0.3s ease;
-    color: rgba(255, 255, 255, 0.9);
-    width: 17px;
-    height: 17px;
-  }
-  
-  
-  .back-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transform: translateX(-100%);
-    transition: transform 0.5s ease;
-  }
-  
-  .back-button:hover::before {
-    transform: translateX(100%);
-  }
-  
-  .file-title {
-    margin: 0;
-    font-size: 1.2rem;
-    font-weight: 600;
-    word-break: break-all;
-    color: var(--text-primary, #F8F8F2);
-    font-family: 'Sora', sans-serif;
-  }
-  
-  .empty-state {
-    text-align: center;
-    padding: 2rem;
-    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
-    background-color: rgba(30, 30, 56, 0.5);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    border-radius: 16px;
-    margin: 1rem 0;
-  }
-  
-  code {
-    background-color: rgba(30, 30, 56, 0.5);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: 'Fira Code', monospace;
-    font-size: 13px;
-    color: var(--text-accent, #A5B4FC);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-    max-width: 100%;
-    white-space: pre-wrap;
-  }
-  
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    background: rgba(15, 23, 42, 0.3);
-    border-radius: 4px;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background: rgba(99, 102, 241, 0.3);
-    border-radius: 4px;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgba(99, 102, 241, 0.5);
-  }
-
-  p {
-    margin-top: 0;
-    margin-bottom: 0.75rem;
-    color: var(--text-secondary, rgba(255, 255, 255, 0.9));
-    line-height: 1.5;
-  }
-  
-  .flash-messages {
-    margin: 0.5rem auto;
-  }
-
-  .main-footer {
-    padding: 1rem 0;
-  }
-  
-  #monaco-container {
-    flex: 1;
-    min-height: 500px;
-    height: calc(100% - 80px);  /* Reduce the space taken by header/footer */
-    border: 1px solid #333;
-    border-radius: 4px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  .file-footer {
-    margin-top: 0.75rem;
-    border-top: 1px solid #333;
-    padding-top: 0.75rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    flex-shrink: 0;
-    width: 100%;
-    box-sizing: border-box;
-    padding-right: 0.5rem;
-  }
-  
-  .file-path {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: #bbb;
-    font-size: 0.9rem;
-    max-width: 60%;
-    overflow: visible;
-  }
-  
-  .file-path-container {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    overflow: hidden;
-  }
-  
-  .file-icon {
-    color: #aaa;
-    flex-shrink: 0;
-  }
-  
-  .path-text {
-    font-family: monospace;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 400px;
-    color: #F5F7FA;
-  }
-  
-  .language-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #252550;
-    color: #F5F7FA;
-    border-radius: 4px;
-    padding: 0.25rem 0.6rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    flex-shrink: 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    position: relative;
-    z-index: 1;
-    min-width: 30px;
-    text-align: center;
-  }
-  
-  .file-stats {
-    color: #aaa;
-    font-size: 0.9rem;
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-left: auto;
-  }
-  
-  .file-stats p {
-    margin: 0;
-  }
-  
-  .stat-item {
-    display: inline-block;
-    white-space: nowrap;
-    margin-right: 0.5rem;
-    font-size: 0.85rem;
-  }
-  
-  .stat-item strong {
-    font-weight: 500;
-    color: #F5F7FA;
-    margin-right: 0.25rem;
-  }
-  
-  .stat-item .updating {
-    color: #aaa;
-    font-style: italic;
-    animation: pulse 1.5s infinite;
-  }
-  
-  @keyframes pulse {
-    0% { opacity: 0.6; }
-    50% { opacity: 1; }
-    100% { opacity: 0.6; }
-  }
-  
-  .loading, .error {
-    padding: 2rem;
-    text-align: center;
-    color: #aaa;
-  }
-  
-  .error {
-    color: #e74c3c;
-  }
-  
-  .user-menu.compact .dropdown-menu {
-    position: absolute;
-    top: calc(100% + 0.5rem);
-    right: 0;
-    background: linear-gradient(135deg, var(--navy-dark, #0F172A) 0%, var(--navy-medium, #1E293B) 100%);
-    border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    padding: 0.5rem 0;
-    min-width: 180px;
-    display: none;
-    z-index: 100;
-  }
-  
-  .user-menu.compact.active .dropdown-menu {
-    display: block;
-    animation: fadeIn 0.3s ease forwards;
-  }
-  
-  .user-menu.compact .dropdown-menu a, 
-  .user-menu.compact .dropdown-menu button {
-    display: block;
-    padding: 0.75rem 1rem;
-    color: var(--text-secondary, #eee);
-    text-decoration: none;
-    text-align: left;
-    background: none;
-    border: none;
-    width: 100%;
-    cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    transition: background-color 0.2s;
-  }
-  
-  .user-menu.compact .dropdown-menu a:hover,
-  .user-menu.compact .dropdown-menu button:hover {
-    background-color: rgba(99, 102, 241, 0.1);
-    color: var(--primary-light-purple, #A78BFA);
-  }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  /* Concepts Tab UI Improvements */
-  .concepts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-    width: 100%;
-  }
-  
-  .concept-card {
-    background: linear-gradient(135deg, var(--navy-dark, #0F172A) 0%, var(--navy-medium, #1E293B) 100%);
-    border-radius: 12px;
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    overflow: hidden;
-    padding: 1.5rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .concept-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
-    border-color: rgba(99, 102, 241, 0.4);
-  }
-  
-  .concept-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(99, 102, 241, 0.3);
-  }
-  
-  .concept-header i {
-    font-size: 1.25rem;
-    color: var(--primary-light-purple, #A78BFA);
-    background: rgba(99, 102, 241, 0.1);
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    flex-shrink: 0;
-  }
-  
-  .concept-header h3 {
-    font-family: 'Sora', sans-serif;
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: var(--text-primary, #F8F8F2);
-    margin: 0;
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-  }
-  
-  .concept-description {
-    margin-bottom: 1.25rem;
-  }
-  
-  .concept-description p {
-    color: var(--text-secondary, rgba(255, 255, 255, 0.9));
-    line-height: 1.6;
-    margin: 0;
-  }
-  
-  /* Not found concept styling */
-  .concept-card.concept-not-found {
-    background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, var(--navy-medium, #1E293B) 100%);
-    border-left: 3px solid #e74c3c;
-  }
-  
-  .concept-card.concept-not-found .concept-header i {
-    color: #e74c3c;
-    background: rgba(231, 76, 60, 0.1);
-  }
-  
-  .concept-help-tip {
-    background-color: rgba(30, 30, 56, 0.5);
-    border-radius: 8px;
-    padding: 1rem;
-    margin: 1rem 0 1.25rem;
-    border: 1px solid rgba(99, 102, 241, 0.2);
-  }
-  
-  .help-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 0.5rem;
-  }
-  
-  .help-header i {
-    color: var(--primary-light-purple, #A78BFA);
-  }
-  
-  .help-header h4 {
-    font-family: 'Sora', sans-serif;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary, #F8F8F2);
-    margin: 0;
-  }
-  
-  /* Files styling */
-  .concept-files {
-    margin-top: auto;
-    padding-top: 1rem;
-  }
-  
-  .files-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 0.75rem;
-  }
-  
-  .files-header i {
-    color: var(--primary-light-purple, #A78BFA);
-  }
-  
-  .files-header h4 {
-    font-family: 'Sora', sans-serif;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary, #F8F8F2);
-    margin: 0;
-  }
-  
-  .files-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-    max-height: 200px;
-    overflow-y: auto;
-    padding-right: 5px;
-  }
-  
-  .concept-file-item {
-    width: 100%;
-  }
-  
-  .concept-file-link, .unavailable-file {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-    word-break: break-all;
-    width: 100%;
-  }
-  
-  .concept-file-link {
-    color: var(--text-accent, #A5B4FC);
-    text-decoration: none;
-    background-color: rgba(99, 102, 241, 0.1);
-  }
-  
-  .concept-file-link:hover {
-    background-color: rgba(99, 102, 241, 0.2);
-    color: var(--primary-purple, #6366F1);
-  }
-  
-  .concept-file-link i, .unavailable-file i {
-    flex-shrink: 0;
-    font-size: 0.9rem;
-  }
-  
-  .file-path-text {
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-  }
-  
-  .unavailable-file {
-    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  
-  .files-explanation {
-    padding-top: 0.5rem;
-    font-style: italic;
-    border-top: 1px dashed rgba(99, 102, 241, 0.2);
-  }
-  
-  .files-explanation p {
-    margin: 0;
-    color: var(--text-tertiary, rgba(255, 255, 255, 0.7));
-    font-size: 0.9rem;
-  }
-  
-  /* Form styling improvements */
-  .form-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 1rem;
-  }
-  
-  .form-header i {
-    font-size: 1.25rem;
-    color: var(--primary-light-purple, #A78BFA);
-  }
-  
-  .form-header h3 {
-    font-family: 'Sora', sans-serif;
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text-primary, #F8F8F2);
-    margin: 0;
-  }
-  
-  .concept-analysis-form {
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, var(--navy-dark, #0F172A) 0%, var(--deep-purple, #1E1E38) 100%);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    border-radius: 12px;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-  }
-  
   /* Empty state */
   .empty-state {
     text-align: center;
@@ -1969,5 +1304,67 @@
   }
   .directory.expanded > turbo-frame {
     display: block;
+  }
+  
+  .sidebar {
+    background-color: #1E1E3F;
+    border-radius: 8px;
+    padding: 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0; /* Important for Firefox */
+    min-width: 0; /* Important for Firefox */
+    width: 280px; /* Fixed width to match grid definition */
+    box-sizing: border-box;
+  }
+  
+  .sidebar h3 {
+    color: #F5F7FA;
+    margin: 0;
+    padding: 12px;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .file-explorer {
+    flex: 1;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 43px); /* Height of sidebar minus h3 height */
+    min-height: 0; /* Important for Firefox */
+    width: 100%;
+  }
+  
+  .file-tree {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px 12px 12px 12px;
+    margin: 0;
+    height: 100%;
+    max-height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  /* Monaco editor specific styles */
+  #monaco-container {
+    flex: 1;
+    min-height: 500px;
+    height: calc(100% - 80px);  /* Reduce the space taken by header/footer */
+    border: 1px solid #333;
+    border-radius: 4px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100%;
   }
 </style>

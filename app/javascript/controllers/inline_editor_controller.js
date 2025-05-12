@@ -9,6 +9,19 @@ export default class extends Controller {
   
   connect() {
     console.log("Inline editor controller connected");
+    
+    // Check if required targets are present
+    if (!this.hasInfoPanelTarget) {
+      console.error("Missing infoPanel target");
+    }
+    
+    if (!this.hasEditorContainerTarget) {
+      console.error("Missing editorContainer target");
+    } else {
+      console.log("editorContainer found:", this.editorContainerTarget);
+    }
+    
+    // Log all targets for debugging
     console.log("Targets found:", {
       infoPanel: this.hasInfoPanelTarget,
       editorContainer: this.hasEditorContainerTarget,
@@ -17,9 +30,23 @@ export default class extends Controller {
       filePath: this.hasFilePathTarget
     });
     
+    // Check for Monaco
+    if (window.monaco) {
+      console.log("Monaco is already available on page load");
+    } else {
+      console.log("Monaco is not available on page load");
+    }
+    
+    // Check repositories controller values
+    if (this.hasRepositoryIdValue) {
+      console.log("Repository ID:", this.repositoryIdValue);
+    } else {
+      console.warn("No repository ID value found");
+    }
+    
     // Initialize state
     this.currentFileId = null;
-    this.lastViewedFileId = null;
+    this.currentFilePath = null;
     this.editor = null;
     this.startTime = null;
     
@@ -56,12 +83,18 @@ export default class extends Controller {
   // Show the Monaco editor and load file content
   async showFile(event) {
     event.preventDefault();
+    console.log("showFile method called");
     
     const fileLink = event.currentTarget;
     const fileId = fileLink.dataset.fileId;
     const filePath = fileLink.dataset.path || fileLink.textContent.trim();
     
-    if (!fileId) return;
+    console.log("File selected:", { fileId, filePath });
+    
+    if (!fileId) {
+      console.error("No fileId found in the clicked element");
+      return;
+    }
     
     try {
       // Record time for previous file if needed
@@ -150,80 +183,61 @@ export default class extends Controller {
         return;
       }
       
-      // Show loading state and set to full height
+      // Hide info panel
       this.infoPanelTarget.style.display = 'none';
+      
+      // Make editor container visible
       this.editorContainerTarget.style.display = 'flex';
-      this.editorContainerTarget.style.flexDirection = 'column';
-      this.editorContainerTarget.style.height = '90vh';
-      this.editorContainerTarget.style.overflow = 'hidden';
       this.editorContainerTarget.innerHTML = '<div class="loading">Loading file...</div>';
+      
+      console.log("Loading file content for ID:", fileId);
       
       // Fetch file content
       const response = await fetch(`/repository_files/${fileId}/content`);
       if (!response.ok) throw new Error('Failed to load file content');
       
       const fileData = await response.json();
-      this.currentFileData = fileData;
       
-      // Ensure header elements exist
+      // Add header elements with file info
       this.ensureHeaderElements();
       
-      // Update file title
+      // Set file info
       if (this.hasFileTitleTarget) {
-        // Extract the filename from the path for the title
-        const fileName = fileData.path.split('/').pop();
-        this.fileTitleTarget.textContent = fileName;
-      } else {
-        console.warn("Missing fileTitle target");
+        this.fileTitleTarget.textContent = this.currentFilePath.split('/').pop();
       }
       
-      // Update file path
       if (this.hasFilePathTarget) {
-        // Include the language in the path display
-        const language = fileData.language || 'plaintext';
-        const formattedLanguage = language.charAt(0).toUpperCase() + language.slice(1);
-        const badgeClass = this.getLanguageBadgeClass(language);
-        
-        // Clear previous content
-        this.filePathTarget.innerHTML = '';
-        
-        // Create path text element
-        const pathText = document.createElement('span');
-        pathText.className = 'path-text';
-        pathText.textContent = fileData.path;
-        this.filePathTarget.appendChild(pathText);
-        
-        // Create language badge separately
-        const badge = document.createElement('span');
-        badge.className = `language-badge ${badgeClass}`;
-        badge.textContent = formattedLanguage;
-        this.filePathTarget.appendChild(badge);
-        
-        // Add key concept file indication if this is a key file
-        if (fileData.is_concept_key_file) {
-          const keyBadge = document.createElement('span');
-          keyBadge.className = 'language-badge key-file-badge';
-          keyBadge.innerHTML = '<span class="key-file-star">★</span> Key File';
-          this.filePathTarget.appendChild(keyBadge);
-        }
+        this.filePathTarget.textContent = this.currentFilePath;
       }
       
-      if (this.hasFileStatsTarget) {
+      // Update stats if available
+      if (this.hasFileStatsTarget && fileData.file_view) {
         this.updateFileStats(fileData.file_view);
-      } else {
-        console.warn("Missing fileStats target");
       }
       
-      // Initialize Monaco editor if needed or update content
-      this.initializeEditor(fileData.content, fileData.language);
-      
-      // Start tracking time
+      // Record start time for this file view
       this.startTime = new Date();
       
+      // Initialize Monaco editor
+      this.initializeEditor(fileData.content, fileData.language);
+      
+      console.log("File display complete");
+      
     } catch (error) {
-      console.error('Error loading file:', error);
+      console.error("Error displaying file:", error);
+      
+      // Show error message
       if (this.hasEditorContainerTarget) {
-        this.editorContainerTarget.innerHTML = `<div class="error">Error loading file: ${error.message}</div>`;
+        this.editorContainerTarget.innerHTML = `
+          <div class="error-box">
+            <div class="error-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="error-message">
+              <h3>Error Loading File</h3>
+              <p>${error.message}</p>
+              <button class="btn btn-outline" onclick="window.location.reload()">Refresh Page</button>
+            </div>
+          </div>
+        `;
       }
     }
   }
@@ -276,129 +290,118 @@ export default class extends Controller {
   
   // Initialize or update the Monaco editor
   initializeEditor(content, language) {
-    // If editor already exists, just update content
+    console.log("Initializing editor with language:", language);
+    
+    // First dispose of any existing editor
     if (this.editor) {
-      const monaco = window.monaco;
-      const model = this.editor.getModel();
-      
-      model.setValue(content);
-      monaco.editor.setModelLanguage(model, language);
-      return;
+      console.log("Disposing existing editor");
+      this.editor.dispose();
+      this.editor = null;
     }
     
-    // Otherwise initialize a new editor
-    // Load Monaco editor from CDN if needed
-    if (window.monaco) {
-      // Ensure theme is applied before creating editor
-      if (typeof window.applyPrimetaTheme === 'function') {
-        window.applyPrimetaTheme();
+    try {
+      if (!window.monaco) {
+        console.error("Monaco is not available!");
+        this.loadMonaco(content, language);
+        return;
       }
+      
+      // Create a new editor
       this.createEditor(content, language);
-    } else {
-      // Add Monaco loader script
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.40.0/min/vs/loader.js';
-      script.async = true;
-      script.onload = () => {
-        window.require.config({
-          paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.40.0/min/vs' }
-        });
-        
-        // Load the basic editor first
-        window.require(['vs/editor/editor.main'], () => {
-          // Apply theme after Monaco loads but before editor creation
-          if (typeof window.applyPrimetaTheme === 'function') {
-            window.applyPrimetaTheme();
-          }
-          this.createEditor(content, language);
-        });
-      };
-      document.head.appendChild(script);
+    } catch (error) {
+      console.error("Error initializing editor:", error);
+      this.editorContainerTarget.innerHTML = `<div class="error">Error creating editor: ${error.message}</div>`;
     }
+  }
+  
+  loadMonaco(content, language) {
+    console.log("Loading Monaco from CDN");
+    // Add Monaco loader script
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.40.0/min/vs/loader.js';
+    script.async = true;
+    script.onload = () => {
+      window.require.config({
+        paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.40.0/min/vs' }
+      });
+      
+      window.require(['vs/editor/editor.main'], () => {
+        console.log("Monaco loaded from CDN");
+        // Ensure our theme is defined after Monaco loads but before editor creation
+        if (typeof window.applyPrimetaTheme === 'function') {
+          window.applyPrimetaTheme();
+        }
+        this.createEditor(content, language);
+      });
+    };
+    document.head.appendChild(script);
   }
   
   // Create the Monaco editor instance with minimal features for maximum performance
   createEditor(content, language) {
-    if (!this.hasEditorContainerTarget) {
-      console.error("Cannot create editor: missing editorContainer target");
+    if (!window.monaco) {
+      console.error("Monaco not available when trying to create editor");
       return;
     }
     
-    const monaco = window.monaco;
-    
-    // Ensure theme is applied right before creating the editor
-    if (typeof window.applyPrimetaTheme === 'function') {
-      window.applyPrimetaTheme();
+    // Find or create a container for Monaco
+    let monacoContainer = this.editorContainerTarget.querySelector('#monaco-container');
+    if (!monacoContainer) {
+      console.log("Creating new Monaco container");
+      monacoContainer = document.createElement('div');
+      monacoContainer.id = 'monaco-container';
+      
+      // Clear editor container and add the Monaco container
+      this.editorContainerTarget.innerHTML = '';
+      this.editorContainerTarget.appendChild(monacoContainer);
     }
     
-    // Simple language mapping
-    const languageMap = {
-      'rb': 'ruby',
-      'js': 'javascript',
-      'py': 'python',
-      'html': 'html',
-      'css': 'css'
-    };
+    console.log("Creating Monaco editor with language:", language);
     
-    // Normalize the language identifier
-    const normalizedLanguage = languageMap[language] || language || 'plaintext';
-    
-    // Find the monaco container
-    const editorContainer = this.editorContainerTarget.querySelector('#monaco-container');
-    if (!editorContainer) {
-      console.error("Monaco container not found");
-      return;
+    try {
+      // Create the editor with minimal config for performance
+      this.editor = window.monaco.editor.create(monacoContainer, {
+        value: content,
+        language: language || 'plaintext',
+        theme: 'primeta-dark',
+        readOnly: true, // Always read-only in this context
+        automaticLayout: true,
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        fontFamily: 'Fira Code, monospace',
+        fontSize: 14,
+        lineNumbers: 'on',
+        renderLineHighlight: 'all',
+        scrollbar: {
+          useShadows: false,
+          vertical: 'visible',
+          horizontal: 'visible',
+          verticalScrollbarSize: 10,
+          horizontalScrollbarSize: 10
+        }
+      });
+      
+      console.log("Monaco editor created successfully");
+      
+      // Force a layout update immediately
+      this.editor.layout();
+      
+      // Add resize handler
+      const handleResize = () => {
+        if (this.editor) {
+          this.editor.layout();
+        }
+      };
+      
+      window.addEventListener('resize', handleResize);
+      this.resizeHandler = handleResize;
+      
+      // Initial layout after a short delay to ensure everything is rendered
+      setTimeout(handleResize, 100);
+    } catch (error) {
+      console.error("Error creating Monaco editor:", error);
+      monacoContainer.innerHTML = `<div class="error">Error creating editor: ${error.message}</div>`;
     }
-    
-    // Set full width and optimize overflow
-    editorContainer.style.width = '100%';
-    editorContainer.style.overflow = 'hidden';
-    
-    // Create minimal editor with improved settings
-    this.editor = monaco.editor.create(editorContainer, {
-      value: content,
-      language: normalizedLanguage,
-      theme: 'primeta-dark',
-      readOnly: true,
-      automaticLayout: true, // Enable auto layout
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      renderLineHighlight: 'all', // Show current line highlight
-      overviewRulerBorder: false,
-      overviewRulerLanes: 0,
-      hideCursorInOverviewRuler: true,
-      renderIndentGuides: true, // Show indent guides
-      contextmenu: false,
-      folding: true, // Enable code folding
-      glyphMargin: false,
-      lineDecorationsWidth: 0,
-      lineNumbers: 'on',
-      lineNumbersMinChars: 3,
-      renderWhitespace: 'none',
-      smoothScrolling: true, // Enable smooth scrolling
-      find: {
-        addExtraSpaceOnTop: false,
-        autoFindInSelection: 'never'
-      }
-    });
-    
-    // Minimal resize handler with very long debounce
-    let resizeTimeout;
-    const handleResize = () => {
-      if (resizeTimeout) clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        if (this.editor) this.editor.layout();
-      }, 500); // Very long debounce
-    };
-    
-    // Only handle window resize events
-    window.addEventListener('resize', handleResize);
-    this.resizeHandler = handleResize;
-    
-    // Initial layout
-    setTimeout(() => {
-      if (this.editor) this.editor.layout();
-    }, 100);
   }
   
   // Update file stats display
@@ -412,24 +415,45 @@ export default class extends Controller {
     `;
   }
   
-  // Show repository info instead of file
+  // Show the repository info panel, hide the editor
   showInfo() {
+    console.log("Showing info panel, hiding editor");
+    
     // Record time for current file if needed
     if (this.currentFileId) {
       this.recordTimeSpent();
-      
-      // Store the last viewed file ID before resetting
-      this.lastViewedFileId = this.currentFileId;
-      this.currentFileId = null;
     }
     
-    // Switch back to info panel
+    // Reset current file
+    this.currentFileId = null;
+    this.currentFilePath = null;
+    
+    // Remove highlight from current file
+    document.querySelectorAll('.file-item a.current-file').forEach(el => {
+      el.classList.remove('current-file');
+    });
+    
+    // Dispose of the editor if it exists
+    if (this.editor) {
+      this.editor.dispose();
+      this.editor = null;
+    }
+    
+    // Hide editor container first
     if (this.hasEditorContainerTarget) {
       this.editorContainerTarget.style.display = 'none';
+      // Clear editor content to free memory
+      this.editorContainerTarget.innerHTML = '';
     }
     
+    // Then show the info panel
     if (this.hasInfoPanelTarget) {
       this.infoPanelTarget.style.display = 'block';
+      
+      // Force a layout refresh
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 100);
     }
   }
   

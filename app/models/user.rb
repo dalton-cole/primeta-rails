@@ -6,7 +6,7 @@ class User < ApplicationRecord
          :omniauthable, omniauth_providers: [:github]
          
   # Associations
-  has_many :file_views, dependent: :destroy
+  has_many :file_views, dependent: :destroy, counter_cache: true
   has_many :viewed_files, through: :file_views, source: :repository_file
          
   # Role constants

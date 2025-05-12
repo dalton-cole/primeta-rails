@@ -5,7 +5,7 @@ class RepositoryFilesController < ApplicationController
 
   def show
     # Record file view
-    record_file_view
+    @file_view = record_file_view
     
     # Prepare file content for Monaco Editor
     @language = @repository_file.language || 'plaintext'
@@ -15,7 +15,7 @@ class RepositoryFilesController < ApplicationController
   # Return file content as JSON
   def content
     # Record file view
-    record_file_view
+    @file_view = record_file_view
     
     # Prepare file data for Monaco Editor
     language = @repository_file.language || 'plaintext'
@@ -52,74 +52,8 @@ class RepositoryFilesController < ApplicationController
       return head :bad_request
     end
     
-    # Find or initialize file view record
-    file_view = current_user.file_views.find_or_initialize_by(repository_file: @repository_file)
-    
-    # Log before updating
-    Rails.logger.info("Before update: view_count=#{file_view.view_count}, total_time_spent=#{file_view.total_time_spent}")
-    
-    # Initialize for new records
-    if file_view.new_record?
-      file_view.view_count = 0
-      file_view.total_time_spent = 0
-      Rails.logger.info("New record initialized")
-    end
-    
-    # Update the total time spent
-    original_time = file_view.total_time_spent || 0
-    file_view.total_time_spent ||= 0
-    file_view.total_time_spent += time_spent
-    
-    # Save and log the result
-    success = file_view.save
-    Rails.logger.info("Save successful: #{success}")
-    Rails.logger.info("After update: total_time_spent from #{original_time} to #{file_view.total_time_spent}")
-    
-    if !success
-      Rails.logger.error("Failed to save file_view: #{file_view.errors.full_messages.join(', ')}")
-      return head :internal_server_error
-    end
-    
-    # Broadcast progress update via Turbo Streams
-    if success
-      repository = @repository_file.repository
-      repository_files = repository.repository_files.includes(:file_views)
-      
-      # Get key files from concepts
-      key_concepts = repository.key_concepts
-      key_file_paths = []
-      key_concepts.each do |concept|
-        key_file_paths.concat(concept.key_files) if concept.key_files.present?
-      end
-      key_files = repository.repository_files.where(path: key_file_paths.uniq)
-      
-      viewed_file_ids = current_user.file_views.where(repository_file_id: repository_files.pluck(:id)).pluck(:repository_file_id).to_set
-      
-      # Calculate progress metrics
-      total_files_count = repository_files.count
-      viewed_files_count = viewed_file_ids.count
-      files_progress_percentage = total_files_count > 0 ? ((viewed_files_count.to_f / total_files_count) * 100).round(1) : 0
-      
-      key_files_count = key_files.count
-      viewed_key_files_count = key_files.count { |file| viewed_file_ids.include?(file.id) }
-      key_files_progress_percentage = key_files_count > 0 ? ((viewed_key_files_count.to_f / key_files_count) * 100).round(1) : 0
-      
-      # Broadcast the progress update
-      Turbo::StreamsChannel.broadcast_replace_to(
-        "repository_#{repository.id}_progress",
-        target: "repository_progress_#{repository.id}",
-        partial: "repositories/progress",
-        locals: {
-          repository: repository,
-          total_files_count: total_files_count,
-          viewed_files_count: viewed_files_count,
-          files_progress_percentage: files_progress_percentage,
-          key_files_count: key_files_count,
-          viewed_key_files_count: viewed_key_files_count,
-          key_files_progress_percentage: key_files_progress_percentage
-        }
-      )
-    end
+    tracking_service = FileViewTrackingService.new(current_user, @repository_file)
+    file_view = tracking_service.record_view(time_spent)
     
     # Return updated stats as JSON
     render json: {
@@ -184,58 +118,8 @@ class RepositoryFilesController < ApplicationController
   end
   
   def record_file_view
-    # Find existing file view or create a new one
-    @file_view = current_user.file_views.find_or_initialize_by(repository_file: @repository_file)
-    
-    # Initialize view_count for new records
-    if @file_view.new_record?
-      @file_view.view_count = 0
-      @file_view.total_time_spent = 0
-    end
-    
-    # Record time spent if provided
+    tracking_service = FileViewTrackingService.new(current_user, @repository_file)
     time_spent = params[:time_spent].to_i if params[:time_spent].present?
-    
-    # Update file view
-    @file_view.record_view(time_spent)
-    
-    # Broadcast progress update via Turbo Streams after the view is recorded
-    repository = @repository_file.repository
-    repository_files = repository.repository_files.includes(:file_views)
-    
-    # Get key files from concepts
-    key_concepts = repository.key_concepts
-    key_file_paths = []
-    key_concepts.each do |concept|
-      key_file_paths.concat(concept.key_files) if concept.key_files.present?
-    end
-    key_files = repository.repository_files.where(path: key_file_paths.uniq)
-    
-    viewed_file_ids = current_user.file_views.where(repository_file_id: repository_files.pluck(:id)).pluck(:repository_file_id).to_set
-    
-    # Calculate progress metrics
-    total_files_count = repository_files.count
-    viewed_files_count = viewed_file_ids.count
-    files_progress_percentage = total_files_count > 0 ? ((viewed_files_count.to_f / total_files_count) * 100).round(1) : 0
-    
-    key_files_count = key_files.count
-    viewed_key_files_count = key_files.count { |file| viewed_file_ids.include?(file.id) }
-    key_files_progress_percentage = key_files_count > 0 ? ((viewed_key_files_count.to_f / key_files_count) * 100).round(1) : 0
-    
-    # Broadcast the progress update
-    Turbo::StreamsChannel.broadcast_replace_to(
-      "repository_#{repository.id}_progress",
-      target: "repository_progress_#{repository.id}",
-      partial: "repositories/progress",
-      locals: {
-        repository: repository,
-        total_files_count: total_files_count,
-        viewed_files_count: viewed_files_count,
-        files_progress_percentage: files_progress_percentage,
-        key_files_count: key_files_count,
-        viewed_key_files_count: viewed_key_files_count,
-        key_files_progress_percentage: key_files_progress_percentage
-      }
-    )
+    tracking_service.record_view(time_spent)
   end
 end

@@ -1,7 +1,10 @@
 class Repository < ApplicationRecord
+  # Include concerns
+  include GithubRepositoryIntegration
+  
   # Associations
-  has_many :repository_files, dependent: :destroy
-  has_many :key_concepts, dependent: :destroy
+  has_many :repository_files, dependent: :destroy, counter_cache: true
+  has_many :key_concepts, dependent: :destroy, counter_cache: true
   
   # Constants
   STATUS_OPTIONS = %w[active syncing error].freeze
@@ -24,7 +27,7 @@ class Repository < ApplicationRecord
   end
   
   def file_count
-    repository_files.count
+    repository_files_count || repository_files.count
   end
   
   def explorer_count
@@ -64,15 +67,18 @@ class Repository < ApplicationRecord
   end
   
   def total_lines_of_code
-    # Count lines in content for each file
-    repository_files.sum do |file|
-      file.content.to_s.lines.count
-    end
+    # Improved to avoid N+1 query issue
+    repository_files.sum("(LENGTH(content) - LENGTH(REPLACE(content, '\n', ''))) + 1")
   end
   
   def average_file_size
-    return 0 if repository_files.empty?
-    repository_files.average(:size).to_i
+    count = repository_files.count
+    return 0 if count == 0
+    
+    avg = repository_files.average(:size)
+    return 0 if avg.nil?
+    
+    avg.to_i
   end
   
   def quick_stats

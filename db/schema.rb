@@ -10,7 +10,23 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_10_013418) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_12_222743) do
+  create_table "achievements", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "description", null: false
+    t.string "category", null: false
+    t.string "badge_icon"
+    t.integer "threshold"
+    t.boolean "repeatable", default: false
+    t.boolean "hidden", default: false
+    t.string "key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_achievements_on_category"
+    t.index ["key"], name: "index_achievements_on_key", unique: true
+    t.index ["name"], name: "index_achievements_on_name", unique: true
+  end
+
   create_table "ai_feedbacks", force: :cascade do |t|
     t.integer "user_id"
     t.integer "repository_id"
@@ -46,6 +62,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_10_013418) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["repository_file_id"], name: "index_file_views_on_repository_file_id"
+    t.index ["user_id", "repository_file_id"], name: "index_file_views_on_user_id_and_repository_file_id"
     t.index ["user_id"], name: "index_file_views_on_user_id"
   end
 
@@ -72,6 +89,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_10_013418) do
     t.datetime "updated_at", null: false
     t.text "error_message"
     t.string "current_commit_hash"
+    t.integer "repository_files_count", default: 0
+    t.integer "key_concepts_count", default: 0
   end
 
   create_table "repository_files", force: :cascade do |t|
@@ -84,7 +103,11 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_10_013418) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "is_key_file", default: false
+    t.boolean "is_root", default: false, null: false
+    t.integer "file_views_count", default: 0
     t.index ["is_key_file"], name: "index_repository_files_on_is_key_file"
+    t.index ["is_root"], name: "index_repository_files_on_is_root"
+    t.index ["repository_id", "path"], name: "index_repository_files_on_repository_id_and_path"
     t.index ["repository_id"], name: "index_repository_files_on_repository_id"
   end
 
@@ -108,6 +131,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_10_013418) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["repository_id"], name: "index_scavenger_hunts_on_repository_id"
+  end
+
+  create_table "user_achievements", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.integer "achievement_id", null: false
+    t.integer "progress"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["achievement_id"], name: "index_user_achievements_on_achievement_id"
+    t.index ["user_id"], name: "index_user_achievements_on_user_id"
   end
 
   create_table "user_hunt_completions", force: :cascade do |t|
@@ -135,6 +169,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_10_013418) do
     t.datetime "updated_at", null: false
     t.string "provider"
     t.string "uid"
+    t.integer "file_views_count", default: 0
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
@@ -145,6 +180,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_10_013418) do
   add_foreign_key "repository_files", "repositories"
   add_foreign_key "scavenger_hunt_items", "scavenger_hunts"
   add_foreign_key "scavenger_hunts", "repositories"
+  add_foreign_key "user_achievements", "achievements"
+  add_foreign_key "user_achievements", "users"
   add_foreign_key "user_hunt_completions", "scavenger_hunt_items"
   add_foreign_key "user_hunt_completions", "users"
 end

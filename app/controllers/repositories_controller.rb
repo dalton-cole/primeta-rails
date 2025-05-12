@@ -8,29 +8,34 @@ class RepositoriesController < ApplicationController
   end
 
   def show
-    @repository = Repository.find(params[:id])
     @key_concepts = @repository.key_concepts.order(:name)
     
-    # Load repository files with their file views
+    # Load repository files with eager loading to avoid N+1 queries
     @repository_files = @repository.repository_files.includes(:file_views)
     
     # Get all key files from key concepts
-    @key_files_from_concepts = aggregate_key_files_from_concepts(@key_concepts)
+    @key_files_from_concepts = fetch_key_files_from_concepts(@key_concepts)
     
-    # Create a hash of file IDs that current user has viewed
-    @viewed_file_ids = current_user.file_views.where(repository_file_id: @repository_files.pluck(:id)).pluck(:repository_file_id).to_set
+    # Use the ProgressTrackingService for calculating progress
+    progress_service = ProgressTrackingService.new(@repository, current_user)
+    progress_data = progress_service.calculate_progress
     
-    # Calculate progress metrics
-    @total_files_count = @repository_files.count
-    @viewed_files_count = @viewed_file_ids.count
-    @files_progress_percentage = @total_files_count > 0 ? ((@viewed_files_count.to_f / @total_files_count) * 100).round(1) : 0
+    # Extract progress data into instance variables
+    @total_files_count = progress_data[:total_files_count]
+    @viewed_files_count = progress_data[:viewed_files_count]
+    @files_progress_percentage = progress_data[:files_progress_percentage]
+    @key_files_count = progress_data[:key_files_count]
+    @viewed_key_files_count = progress_data[:viewed_key_files_count]
+    @key_files_progress_percentage = progress_data[:key_files_progress_percentage]
     
-    # Calculate new key files metrics based on concept key files
-    @key_files_count = @key_files_from_concepts.count
-    @viewed_key_files_count = @key_files_from_concepts.count { |file| @viewed_file_ids.include?(file.id) }
-    @key_files_progress_percentage = @key_files_count > 0 ? ((@viewed_key_files_count.to_f / @key_files_count) * 100).round(1) : 0
+    # Create a hash of file IDs that current user has viewed - with an empty set as fallback
+    if @repository_files.present? && current_user.present?
+      @viewed_file_ids = current_user.file_views.where(repository_file_id: @repository_files.pluck(:id)).pluck(:repository_file_id).to_set
+    else
+      @viewed_file_ids = Set.new
+    end
     
-    @directory_structure = build_directory_structure(@repository_files)
+    @directory_structure = build_directory_structure(@repository_files || [])
   end
 
   def new
@@ -119,33 +124,8 @@ class RepositoriesController < ApplicationController
 
   # Return progress data as JSON for real-time updates
   def progress
-    # Get repository files with their file views
-    repository_files = @repository.repository_files.includes(:file_views)
-    
-    # Get key files from concepts
-    key_concepts = @repository.key_concepts
-    key_files_from_concepts = aggregate_key_files_from_concepts(key_concepts)
-    
-    # Create a hash of file IDs that current user has viewed
-    viewed_file_ids = current_user.file_views.where(repository_file_id: repository_files.pluck(:id)).pluck(:repository_file_id).to_set
-    
-    # Calculate progress metrics
-    total_files_count = repository_files.count
-    viewed_files_count = viewed_file_ids.count
-    files_progress_percentage = total_files_count > 0 ? ((viewed_files_count.to_f / total_files_count) * 100).round(1) : 0
-    
-    key_files_count = key_files_from_concepts.count
-    viewed_key_files_count = key_files_from_concepts.count { |file| viewed_file_ids.include?(file.id) }
-    key_files_progress_percentage = key_files_count > 0 ? ((viewed_key_files_count.to_f / key_files_count) * 100).round(1) : 0
-    
-    render json: {
-      total_files_count: total_files_count,
-      viewed_files_count: viewed_files_count,
-      files_progress_percentage: files_progress_percentage,
-      key_files_count: key_files_count,
-      viewed_key_files_count: viewed_key_files_count,
-      key_files_progress_percentage: key_files_progress_percentage
-    }
+    progress_service = ProgressTrackingService.new(@repository, current_user)
+    render json: progress_service.calculate_progress
   end
 
   # Return the contents of a directory for lazy loading (AJAX)
@@ -183,11 +163,34 @@ class RepositoriesController < ApplicationController
     end
   end
   
+  # Aggregate all unique key files from key concepts
+  def fetch_key_files_from_concepts(key_concepts)
+    # Return empty array if no key concepts
+    return [] if key_concepts.blank?
+    
+    # Get all file paths from key concepts
+    key_file_paths = key_concepts.flat_map { |concept| concept.key_files.presence || [] }.uniq
+    
+    # Return empty array if no key file paths
+    return [] if key_file_paths.blank?
+    
+    # Find matching repository files
+    @repository.repository_files.where(path: key_file_paths)
+  end
+  
   # Build a nested hash representing the directory structure
-  def build_directory_structure(repository)
+  def build_directory_structure(repository_files)
     structure = {}
     
-    repository.order(:path).each do |file|
+    # Return empty structure if repository_files is nil or empty
+    return structure if repository_files.blank?
+    
+    # Cache the files to avoid multiple queries
+    files = repository_files.to_a
+    
+    files.sort_by(&:path).each do |file|
+      next unless file.path.present?
+      
       path_parts = file.path.split('/')
       current_level = structure
       
@@ -199,24 +202,12 @@ class RepositoriesController < ApplicationController
       
       # Add the file to the current directory level
       file_name = path_parts.last
-      current_level[file_name] = { file_id: file.id, is_key_file: file.is_key_file }
+      current_level[file_name] = { 
+        file_id: file.id, 
+        is_key_file: file.try(:is_key_file) || false 
+      }
     end
     
     structure
-  end
-  
-  # Aggregate all unique key files from key concepts
-  def aggregate_key_files_from_concepts(key_concepts)
-    # Get all file paths from key concepts
-    all_key_file_paths = []
-    key_concepts.each do |concept|
-      all_key_file_paths.concat(concept.key_files) if concept.key_files.present?
-    end
-    
-    # Remove duplicates
-    unique_file_paths = all_key_file_paths.uniq
-    
-    # Find matching repository files
-    @repository.repository_files.where(path: unique_file_paths)
   end
 end
