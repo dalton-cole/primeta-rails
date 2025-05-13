@@ -11,6 +11,10 @@ Rails.application.routes.draw do
   # Admin routes
   namespace :admin do
     resources :feedbacks, only: [:index]
+    # Mount SolidQueue dashboard, protected by Devise and an admin check
+    authenticate :user, ->(user) { user.admin? } do # Ensure user.admin? is your actual admin check
+      mount SolidQueue::Engine => "/solid_queue"
+    end
   end
   
   # Home controller route
