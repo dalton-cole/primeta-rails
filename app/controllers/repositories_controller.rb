@@ -10,9 +10,6 @@ class RepositoriesController < ApplicationController
   def show
     @key_concepts = @repository.key_concepts.order(:name)
     
-    # Load repository files with eager loading to avoid N+1 queries
-    @repository_files = @repository.repository_files.includes(:file_views)
-    
     # Get all key files from key concepts
     @key_files_from_concepts = fetch_key_files_from_concepts(@key_concepts)
     
@@ -29,8 +26,11 @@ class RepositoriesController < ApplicationController
     @key_files_progress_percentage = progress_data[:key_files_progress_percentage]
     
     # Create a hash of file IDs that current user has viewed - with an empty set as fallback
-    if @repository_files.present? && current_user.present?
-      @viewed_file_ids = current_user.file_views.where(repository_file_id: @repository_files.pluck(:id)).pluck(:repository_file_id).to_set
+    if current_user.present?
+      @viewed_file_ids = current_user.file_views
+                                   .joins(:repository_file)
+                                   .where(repository_files: { repository_id: @repository.id })
+                                   .pluck(:repository_file_id).to_set
     else
       @viewed_file_ids = Set.new
     end
