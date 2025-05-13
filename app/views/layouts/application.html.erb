@@ -88,12 +88,12 @@
       </div>
     </header>
     
-    <div class="flash-messages">
+    <div class="flash-messages" style="position: fixed; top: 60px; left: 0; right: 0; z-index: 1000; pointer-events: none;">
       <% if notice %>
-        <div class="notice"><%= notice %></div>
+        <div class="notice" style="margin: 0 auto; max-width: 80%; text-align: center; padding: 10px 20px; background-color: rgba(13, 12, 34, 0.9); color: white; border-radius: 8px; backdrop-filter: blur(4px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); pointer-events: auto;"><%= notice %></div>
       <% end %>
       <% if alert %>
-        <div class="alert"><%= alert %></div>
+        <div class="alert" style="margin: 0 auto; max-width: 80%; text-align: center; padding: 10px 20px; background-color: rgba(220, 53, 69, 0.9); color: white; border-radius: 8px; backdrop-filter: blur(4px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); pointer-events: auto;"><%= alert %></div>
       <% end %>
     </div>
     
@@ -116,17 +116,24 @@
 
     <!-- Primeta -->
     <div class="ai-assistant-container" data-controller="ai-assistant"
-         <% if controller_name == 'repository_files' && @repository && @repository_file %>
-         data-ai-assistant-repository-id-value="<%= @repository.id %>"
-         data-ai-assistant-file-path-value="<%= @repository_file.path %>"
-         <% elsif controller_name == 'repositories' && @repository %>
-         data-ai-assistant-repository-id-value="<%= @repository.id %>"
-         data-ai-assistant-current-repository-value="true"
-         <% if !@repository_file %>
-         data-ai-assistant-repository-no-file-value="true"
-         <% end %>
+         <%# Determine page type for the AI assistant %>
+         <% if (controller_name != 'repository_files' && controller_name != 'repositories') || (controller_name == 'repositories' && action_name == 'index') %>
+           data-ai-assistant-page-type-value="static"
+         <% elsif controller_name == 'repositories' && action_name == 'show' && !@repository_file && @repository %>
+           data-ai-assistant-page-type-value="repository_guide"
+           data-ai-assistant-repository-id-value="<%= @repository.id %>"
+           data-ai-assistant-current-repository-value="true"
+         <% elsif controller_name == 'repository_files' && @repository && @repository_file %>
+           data-ai-assistant-page-type-value="repository_file"
+           data-ai-assistant-repository-id-value="<%= @repository.id %>"
+           data-ai-assistant-file-path-value="<%= @repository_file.path %>"
+           data-ai-assistant-current-repository-value="true"
+         <% elsif controller_name == 'repositories' && action_name == 'show' && @repository # Case: Repo show, but @repository_file might be nil initially before JS loads a file. Treat as guide initially. %>
+           data-ai-assistant-page-type-value="repository_guide"
+           data-ai-assistant-repository-id-value="<%= @repository.id %>"
+           data-ai-assistant-current-repository-value="true"
          <% else %>
-         data-ai-assistant-static-info-value="true"
+           data-ai-assistant-page-type-value="static" <%# Default fallback %>
          <% end %>
          data-ai-assistant-is-admin-value="<%= current_user&.admin? || false %>">
       <button class="ai-assistant-toggle" data-action="click->ai-assistant#toggle" title="Toggle AI Assistant">
@@ -137,121 +144,47 @@
       </button>
       <div class="ai-assistant-panel hidden" data-ai-assistant-target="panel">
         <div class="ai-assistant-header">
-          <div class="ai-title">
-            <div class="ai-icon-small">
-              <img src="/images/icon.svg" width="18" height="18" alt="Primeta AI" />
-            </div>
-            <span>Primeta AI</span>
-          </div>
-          <button class="close-button" data-action="click->ai-assistant#toggle" title="Close Panel">×</button>
+          <span>AI Assistant</span>
+          <button class="close-button" data-action="click->ai-assistant#toggle"><i class="bi bi-x-lg"></i></button>
         </div>
-        
-        <!-- Tab navigation -->
-        <div class="ai-assistant-tabs">
-          <div class="ai-assistant-tab active" data-tab="context" data-action="click->ai-assistant#switchTab" data-ai-assistant-target="tabLink">Context</div>
-          <div class="ai-assistant-tab" data-tab="challenges" data-action="click->ai-assistant#switchTab" data-ai-assistant-target="tabLink">Challenges</div>
-        </div>
-        
-        <!-- Tab contents -->
-        <div class="ai-assistant-content" data-ai-assistant-target="content">
-          <!-- Loading indicator -->
-          <div class="ai-loading <%= 'hidden' unless controller_name == 'repository_files' && @repository && @repository_file %>" data-ai-assistant-target="loadingIndicator">
+
+        <div class="ai-assistant-content">
+          <%# Loading Indicator %>
+          <div class="ai-loading hidden" data-ai-assistant-target="loadingIndicator">
             <div class="spinner"></div>
-          </div>
-          
-          <!-- Error message -->
-          <div class="ai-error hidden" data-ai-assistant-target="errorMessage"></div>
-          
-          <!-- Context tab content -->
-          <div class="ai-tab-content active" data-tab="context" data-ai-assistant-target="contextContent" data-ai-assistant-target="tabContent"
-               <% if controller_name == 'repositories' && @repository && !@repository_file %>
-               data-is-repository-guide="true"
-               <% end %>>
-            <% if controller_name != 'repository_files' && (controller_name != 'repositories' || !@repository) %>
-              <!-- Static information for non-repository pages -->
-              <div class="ai-static-info">
-                <h3>About Primeta.ai</h3>
-                <p>Primeta.ai is the fastest way to learn from real-world codebases. Our AI-powered platform helps you understand complex code and build your programming knowledge.</p>
-                <p>Explore our <a href="/repositories">repository collection</a> to start learning from real code.</p>
-                
-                <h4>Contact Us</h4>
-                <ul>
-                  <li><i class="bi bi-envelope"></i> <a href="mailto:dalton@deployto.dev">dalton@deployto.dev</a></li>
-                  <li><i class="bi bi-twitter"></i> <a href="https://twitter.com/primeta_ai" target="_blank">@primeta_ai</a></li>
-                  <li><i class="bi bi-linkedin"></i> <a href="https://www.linkedin.com/in/daltoncole/" target="_blank">linkedin.com/in/daltoncole</a></li>
-                </ul>
-              </div>
-            <% elsif controller_name == 'repositories' && @repository && !@repository_file %>
-              <!-- Information for repository show page with no file selected -->
-              <div class="ai-static-info">
-                <h3>How to Use the AI Assistant</h3>
-                <p>You're currently viewing the <strong><%= @repository.name %></strong> repository. To get AI-powered insights:</p>
-                
-                <h4>Step 1: Select a File</h4>
-                <p>Browse the file tree on the left side of the screen and click on any file you'd like to understand.</p>
-                
-                <h4>Step 2: Get AI Analysis</h4>
-                <p>After selecting a file, the AI assistant will automatically analyze it and provide:</p>
-                <ul>
-                  <li><i class="bi bi-file-earmark-code"></i> <strong>File purpose and functionality</strong></li>
-                  <li><i class="bi bi-diagram-3"></i> <strong>How it connects with other files</strong></li>
-                  <li><i class="bi bi-lightbulb"></i> <strong>Key components and patterns</strong></li>
-                  <li><i class="bi bi-code-square"></i> <strong>Explanations of complex code sections</strong></li>
-                </ul>
-                
-                <h4>Step 3: Explore Challenges</h4>
-                <p>Switch to the "Challenges" tab to test your understanding with learning exercises based on the selected file.</p>
-              </div>
-            <% else %>
-              <div class="ai-assistant-placeholder">
-                <p>Select a file to get context about it and understand how it fits into the codebase.</p>
-              </div>
-            <% end %>
-          </div>
-          
-          <!-- Learning Challenges tab content -->
-          <div class="ai-tab-content" data-tab="challenges" data-ai-assistant-target="challengesContent" data-ai-assistant-target="tabContent" data-ai-assistant-target="learningContent"
-               <% if controller_name == 'repositories' && @repository && !@repository_file %>
-               data-is-repository-guide="true"
-               <% end %>>
-            <% if controller_name != 'repository_files' && (controller_name != 'repositories' || !@repository) %>
-              <!-- Static information for non-repository pages -->
-              <div class="ai-static-info">
-                <h3>Learning with Primeta</h3>
-                <p>Our AI generates tailored coding challenges to test your understanding of the codebase you're exploring.</p>
-                <p>Select a file in a repository to start exploring challenges!</p>
-                
-                <h4>Contact Us</h4>
-                <ul>
-                  <li><i class="bi bi-envelope"></i> <a href="mailto:dalton@deployto.dev">dalton@deployto.dev</a></li>
-                  <li><i class="bi bi-twitter"></i> <a href="https://twitter.com/primeta_ai" target="_blank">@primeta_ai</a></li>
-                  <li><i class="bi bi-linkedin"></i> <a href="https://www.linkedin.com/in/daltoncole/" target="_blank">linkedin.com/in/daltoncole</a></li>
-                </ul>
-              </div>
-            <% elsif controller_name == 'repositories' && @repository && !@repository_file %>
-              <!-- Information for repository show page with no file selected for challenges tab-->
-              <div class="ai-static-info">
-                <h3>Learning Challenges</h3>
-                <p>Our AI can generate tailored coding exercises to help you understand this codebase better.</p>
-                
-                <h4>How It Works</h4>
-                <ul>
-                  <li><i class="bi bi-1-circle"></i> <strong>Select any file</strong> from the file tree on the left</li>
-                  <li><i class="bi bi-2-circle"></i> <strong>Switch to this Challenges tab</strong> after file selection</li>
-                  <li><i class="bi bi-3-circle"></i> <strong>Complete the challenge</strong> to test your understanding</li>
-                </ul>
-                
-                <p>Challenges are personalized based on the specific file you select and help reinforce your understanding of the code patterns and concepts.</p>
-              </div>
-            <% else %>
-              <div class="ai-assistant-placeholder">
-                <p>Select a file to explore learning challenges that test your understanding.</p>
-              </div>
-            <% end %>
+            <p>Loading...</p>
           </div>
 
-          <!-- Hidden input field for file path -->
-          <input type="hidden" data-ai-assistant-target="contextFilePath" value="<%= @repository_file&.path %>" />
+          <%# Error Message %>
+          <div class="ai-error-message hidden" data-ai-assistant-target="errorMessage"></div>
+
+          <%# --- Context Content Targets --- %>
+          <%= tag.div class: "ai-content-block hidden", data: { ai_assistant_target: "staticAboutContextContent" } do %>
+            <h4>About Primeta.ai</h4>
+            <p>Primeta.ai is designed to accelerate your understanding of real-world codebases. Our AI analyzes repositories to provide clear explanations and insights, helping you learn faster and more effectively.</p>
+            <p>Explore our <a href="/repositories">repository collection</a> to start learning!</p>
+            
+            <h4>Contact Us</h4>
+            <ul style="list-style: none; padding-left: 0;">
+              <li style="margin-bottom: 5px;"><i class="bi bi-envelope" style="margin-right: 8px;"></i> <a href="mailto:dalton@deployto.dev">dalton@deployto.dev</a></li>
+              <li style="margin-bottom: 5px;"><i class="bi bi-twitter" style="margin-right: 8px;"></i> <a href="https://twitter.com/primeta_ai" target="_blank">@primeta_ai</a></li>
+              <li style="margin-bottom: 5px;"><i class="bi bi-linkedin" style="margin-right: 8px;"></i> <a href="https://www.linkedin.com/in/daltoncole/" target="_blank">LinkedIn</a></li>
+            </ul>
+          <% end %>
+
+          <%= tag.div class: "ai-content-block hidden", data: { ai_assistant_target: "repositoryGuideContextContent" } do %>
+            <%# Static content for repo index/guide pages %>
+            <h4>How to Use the AI Assistant</h4>
+            <p>Select a file from the explorer to get started. The AI will provide an explanation and learning challenges.</p>
+            <ul>
+              <li>Click on a file in the file tree to the left.</li>
+              <li>The AI will analyze the file and provide context here.</li>
+            </ul>
+          <% end %>
+
+          <%= tag.div class: "ai-content-block hidden", data: { ai_assistant_target: "dynamicFileContextContent" } do %>
+            <%# Dynamic content for file context - populated by JS %>
+          <% end %>
         </div>
       </div>
     </div>
@@ -781,6 +714,31 @@
     </script>
     <% end %>
 
+    <% if Rails.env.development? %>
+    <!-- Debug info for AI assistant (only in development) -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log("=== AI ASSISTANT DEBUG INFO ===");
+        console.log("Controller: <%= controller_name %>");
+        console.log("Action: <%= action_name %>");
+        console.log("On repository page: <%= @repository.present? %>");
+        console.log("Has repository file: <%= @repository_file.present? %>");
+        console.log("Repository no file: <%= (controller_name == 'repositories' && @repository && !@repository_file) %>");
+        console.log("Static info page: <%= (controller_name != 'repository_files' && controller_name != 'repositories') %>");
+        
+        // Check the HTML targets
+        setTimeout(function() {
+          const contextContent = document.querySelector('[data-ai-assistant-target="contextContent"]');
+          console.log("Context content HTML:", contextContent ? contextContent.innerHTML.substring(0, 100) + "..." : "NOT FOUND");
+          console.log("Context content HTML length:", contextContent ? contextContent.innerHTML.length : 0);
+          
+          const staticInfo = document.querySelector('.ai-static-info');
+          console.log("Has static info class:", staticInfo ? "YES" : "NO");
+        }, 500);
+      });
+    </script>
+    <% end %>
+
     <script>
       // Handle user dropdown menus
       document.addEventListener('DOMContentLoaded', function() {
@@ -801,6 +759,45 @@
             menu.classList.toggle('active');
           });
         });
+        
+        // Special helper for AI Assistant content visibility
+        const aiToggle = document.querySelector('.ai-assistant-toggle');
+        if (aiToggle) {
+          aiToggle.addEventListener('click', function() {
+            // Wait for panel to become visible
+            setTimeout(function() {
+              const contextContent = document.querySelector('[data-ai-assistant-target="contextContent"]');
+              if (contextContent && contextContent.innerHTML.trim() === '') {
+                console.log("🔍 Empty AI content detected on toggle, adding fallback content");
+                
+                <% if controller_name != 'repository_files' && controller_name != 'repositories' %>
+                  // Static page fallback
+                  contextContent.innerHTML = `
+                    <div class="ai-static-info">
+                      <h3>About Primeta.ai</h3>
+                      <p>Primeta.ai is the fastest way to learn from real-world codebases. Our AI-powered platform helps you understand complex code and build your programming knowledge.</p>
+                      <p>Explore our <a href="/repositories">repository collection</a> to start learning from real code.</p>
+                    </div>
+                  `;
+                <% elsif controller_name == 'repositories' && @repository && !@repository_file %>
+                  // Repository guide fallback
+                  contextContent.innerHTML = `
+                    <div class="ai-static-info">
+                      <h3>How to Use the AI Assistant</h3>
+                      <p>You're currently viewing the <strong><%= @repository&.name %></strong> repository. To get AI-powered insights:</p>
+                      
+                      <h4>Step 1: Select a File</h4>
+                      <p>Browse the file tree on the left side of the screen and click on any file you'd like to understand.</p>
+                      
+                      <h4>Step 2: Get AI Analysis</h4>
+                      <p>After selecting a file, the AI assistant will automatically analyze it and provide insights about the code.</p>
+                    </div>
+                  `;
+                <% end %>
+              }
+            }, 200);
+          });
+        }
       });
     </script>
   </body>

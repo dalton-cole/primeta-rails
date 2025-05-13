@@ -38,6 +38,17 @@
   padding: 5rem 0;
   position: relative;
   overflow: hidden;
+  background-attachment: fixed;
+  animation: subtle-zoom 30s ease-in-out infinite alternate;
+}
+
+@keyframes subtle-zoom {
+  0% {
+    background-size: 100% auto;
+  }
+  100% {
+    background-size: 110% auto;
+  }
 }
 
 .hero::before {

@@ -2,69 +2,18 @@
   <!-- Hero Section -->
   <section class="hero">
     <div class="container">
-      <div class="hero-content">
-        <h1>Master Real-World Codebases</h1>
-        <p class="hero-tagline">Navigate, understand and learn from production code with an AI guide</p>
-        <div class="hero-cta">
+      <div class="hero-content" style="text-shadow: 1px 1px 3px rgba(0,0,0,0.5); text-align: left;">
+        <h1 style="color: white; font-size: 3.2rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.7); margin-bottom: 1.5rem; line-height: 1.2;">Explore Real-World Codebases</h1>
+        <p class="hero-tagline" style="color: white; font-size: 1.3rem; text-shadow: 1px 1px 3px rgba(0,0,0,0.7); margin-bottom: 2rem; max-width: 500px;">Navigate, understand and learn from production code with an AI guide</p>
+        <div class="hero-cta" style="display: flex; gap: 1rem;">
           <% if user_signed_in? %>
-            <%= link_to "Explore Repositories", repositories_path, class: "btn btn-primary btn-lg" %>
+            <%= link_to "View Repositories", repositories_path, class: "btn btn-primary btn-lg" %>
           <% else %>
             <%= button_to user_github_omniauth_authorize_path, data: { turbo: false }, class: "btn btn-primary btn-lg" do %>
               <i class="fab fa-github" style="margin-right: 8px;"></i> Sign in with GitHub
             <% end %>
-            <%= link_to "Explore Codebases", repositories_path, class: "btn btn-outline btn-lg" %>
+            <%= link_to "View Repositories", repositories_path, class: "btn btn-outline btn-lg", style: "color: white; border-color: white;" %>
           <% end %>
-        </div>
-      </div>
-      <div class="hero-image">
-        <div class="code-browser-mockup">
-          <div class="browser-header">
-            <div class="browser-dots">
-              <span></span><span></span><span></span>
-            </div>
-            <div class="browser-address">primeta.ai/repositories/rails/app/controllers</div>
-          </div>
-          <div class="browser-content">
-            <div class="file-tree">
-              <div class="folder">app</div>
-              <div class="folder active">controllers</div>
-              <div class="file">application_controller.rb</div>
-              <div class="file active">users_controller.rb</div>
-              <div class="file">posts_controller.rb</div>
-              <div class="file">comments_controller.rb</div>
-              <div class="folder">models</div>
-              <div class="folder">views</div>
-              <div class="folder">helpers</div>
-              <div class="folder">assets</div>
-            </div>
-            <div class="code-view">
-              <pre><code>class UsersController < ApplicationController
-  before_action :authenticate_user!
-  
-  def show
-    @user = User.find(params[:id])
-    @repositories = @user.repositories
-    
-    respond_to do |format|
-      format.html
-      format.json { render json: @user }
-    end
-  end
-  
-  def index
-    @users = User.all.order(created_at: :desc)
-    
-    if params[:search].present?
-      @users = @users.where("name LIKE ? OR email LIKE ?", 
-                           "%#{params[:search]}%", 
-                           "%#{params[:search]}%")
-    end
-    
-    @users = @users.page(params[:page]).per(20)
-  end
-</code></pre>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -245,23 +194,6 @@
           <h3>Practical Problem-Solving</h3>
           <p>Observe how real engineering teams solve complex technical challenges. Build a mental library of solutions you can apply to your own projects.</p>
         </div>
-      </div>
-    </div>
-  </section>
-  
-  <!-- CTA Section -->
-  <section class="cta-section">
-    <div class="container">
-      <div class="cta-content">
-        <h2>Ready to become a better developer?</h2>
-        <p>Join thousands of developers who are mastering production codebases with Primeta.ai</p>
-        <% if !user_signed_in? %>
-          <%= button_to user_github_omniauth_authorize_path, data: { turbo: false }, class: "btn btn-lg" do %>
-            <i class="fab fa-github" style="margin-right: 8px;"></i> Get Started for Free
-          <% end %>
-        <% else %>
-          <%= link_to "Continue Learning", repositories_path, class: "btn btn-lg" %>
-        <% end %>
       </div>
     </div>
   </section>
@@ -678,64 +610,6 @@
     line-height: 1.6;
   }
   
-  /* CTA Section */
-  .cta-section {
-    background: linear-gradient(135deg, #1A57B8 0%, #0F2E5C 100%);
-    color: white;
-    padding: 5rem 0;
-    text-align: center;
-  }
-  
-  .cta-content {
-    max-width: 700px;
-    margin: 0 auto;
-  }
-  
-  .cta-section h2 {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-    color: white;
-  }
-  
-  .cta-section p {
-    font-size: 1.2rem;
-    margin-bottom: 2rem;
-    color: rgba(255, 255, 255, 0.9);
-  }
-  
-  /* Button styles */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem 1rem;
-    background-color: var(--primary-color);
-    color: white;
-    text-decoration: none;
-    border-radius: var(--border-radius);
-    border: none;
-    cursor: pointer;
-    font-family: 'Sora', sans-serif;
-    font-weight: 500;
-    transition: background-color 0.3s, transform 0.2s;
-    min-height: 40px;
-    line-height: 1.2;
-  }
-  
-  /* Dark mode button styles */
-  .btn-outline {
-    background-color: transparent;
-    border: 2px solid var(--primary-color);
-    color: var(--primary-color);
-    min-height: 40px;
-  }
-  
-  .btn-outline:hover {
-    background-color: rgba(41, 121, 255, 0.2);
-    color: white;
-    border-color: var(--primary-color);
-  }
-  
   /* Responsive styles */
   @media (max-width: 768px) {
     .hero .container {
@@ -765,4 +639,37 @@
       grid-template-columns: 1fr;
     }
   }
+</style>
+
+<%# NEW CSS for Meet Primeta Section Background %>
+<style>
+.meet-primeta-section {
+  position: relative; /* Needed for pseudo-elements */
+  z-index: 0; /* Ensure pseudo-elements are behind content */
+  background-color: #070718; /* Ensure base color is set */
+}
+
+.meet-primeta-section::before { /* Image layer */
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url('/images/hero.png');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.5; /* Increased opacity */
+  z-index: -2; /* Behind overlay */
+}
+
+.meet-primeta-section::after { /* Overlay layer */
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(7, 7, 24, 0.65) 0%, rgba(7, 7, 24, 0.55) 50%, #070718 100%); /* Reduced opacity */
+  z-index: -1; /* On top of image, behind content */
+}
+
+.meet-primeta-section .container {
+  position: relative; /* Ensure content stays above pseudo-elements */
+  z-index: 1;
+}
 </style>

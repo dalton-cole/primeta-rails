@@ -432,6 +432,20 @@ export default class extends Controller {
       
       console.log("Monaco editor created successfully");
       
+      // ---- START TEMPORARY LOGS ----
+      console.log("Language received by createEditor:", language);
+      const badgeElement = this.editorContainerTarget.querySelector('#language-badge');
+      if (badgeElement) {
+        const iconClasses = this.getLanguageBadgeClass(language || 'plaintext');
+        console.log("Generated icon classes:", iconClasses);
+        badgeElement.textContent = ''; // Clear any text content
+        badgeElement.className = `language-badge ${iconClasses}`; // Set base class + Font Awesome icon classes
+        console.log("Applied badgeElement.className:", badgeElement.className);
+      } else {
+        console.warn("Could not find #language-badge element to update.");
+      }
+      // ---- END TEMPORARY LOGS ----
+      
       // Force a layout update immediately
       this.editor.layout();
       
@@ -584,68 +598,35 @@ export default class extends Controller {
   // Get appropriate CSS class for language badge
   getLanguageBadgeClass(language) {
     // Normalize the language by converting to lowercase
-    const normalizedLang = language.toLowerCase();
+    const normalizedLang = language ? language.toLowerCase() : 'plaintext';
     
-    const languageMap = {
-      // JavaScript ecosystem
-      'javascript': 'lang-js',
-      'typescript': 'lang-ts',
-      'jsx': 'lang-js',
-      'tsx': 'lang-ts',
-      
-      // Ruby
-      'ruby': 'lang-ruby',
-      
-      // Python
-      'python': 'lang-py',
-      
-      // Web technologies
-      'html': 'lang-html',
-      'css': 'lang-css',
-      'scss': 'lang-css',
-      'less': 'lang-css',
-      'xml': 'lang-xml',
-      'svg': 'lang-xml',
-      
-      // JVM languages
-      'java': 'lang-java',
-      'kotlin': 'lang-kotlin',
-      'scala': 'lang-scala',
-      'groovy': 'lang-groovy',
-      
-      // .NET languages
-      'csharp': 'lang-csharp',
-      'vb': 'lang-vb',
-      'fsharp': 'lang-fs',
-      
-      // Other languages
-      'go': 'lang-go',
-      'rust': 'lang-rust',
-      'php': 'lang-php',
-      'swift': 'lang-swift',
-      'c': 'lang-c',
-      'cpp': 'lang-cpp',
-      
-      // Shell and scripts
-      'shell': 'lang-shell',
-      'bash': 'lang-shell',
-      'powershell': 'lang-powershell',
-      'bat': 'lang-bat',
-      
-      // Data formats
-      'json': 'lang-json',
-      'yaml': 'lang-yaml',
-      'toml': 'lang-toml',
-      'markdown': 'lang-md',
-      'sql': 'lang-sql',
-      
-      // Special types
-      'dockerfile': 'lang-docker',
-      'makefile': 'lang-makefile',
-      'git': 'lang-git',
-      'plaintext': 'lang-default'
+    // Map Monaco language names to Font Awesome icon classes
+    const iconMap = {
+      'ruby': 'fas fa-gem',
+      'javascript': 'fab fa-js',
+      'typescript': 'fab fa-js-square',
+      'python': 'fab fa-python',
+      'html': 'fas fa-code',
+      'css': 'fab fa-css3',
+      'scss': 'fab fa-css3', // SCSS uses the same icon as CSS
+      'json': 'fas fa-brackets-curly',
+      'markdown': 'fas fa-file-alt',
+      'go': 'fas fa-file-code',
+      'c': 'fas fa-file-code',
+      'cpp': 'fas fa-file-code',
+      'objective-c': 'fas fa-file-code', // Assuming similar to C/C++
+      'csharp': 'fas fa-file-code', // C# can use generic code or a more specific one if available
+      'java': 'fab fa-java',
+      'php': 'fab fa-php',
+      'rust': 'fas fa-file-code',
+      'yaml': 'fas fa-file-alt',
+      'shell': 'fas fa-terminal',
+      'sql': 'fas fa-database', // More specific than file-alt
+      'xml': 'fas fa-code',
+      // Add more mappings as needed based on Monaco language IDs and available FA icons
+      'plaintext': 'fas fa-file' // Default for unknown or plain text
     };
     
-    return languageMap[normalizedLang] || 'lang-default';
+    return iconMap[normalizedLang] || 'fas fa-file'; // Fallback to default file icon
   }
-} 
+}
