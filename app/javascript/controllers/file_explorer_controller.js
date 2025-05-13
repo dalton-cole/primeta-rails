@@ -102,17 +102,11 @@ export default class extends Controller {
       const dirPath = directory.dataset.path;
       const frameId = `dir_${dirPath.replaceAll('/', '_')}`;
       const frame = document.getElementById(frameId);
-      // Determine the current level from the directory's style or data attribute
-      let level = 1;
-      const marginLeft = directory.style.marginLeft;
-      if (marginLeft) {
-        const match = marginLeft.match(/(\d+)/);
-        if (match) {
-          level = Math.floor(parseInt(match[1], 10) / 16);
-        }
-      }
-      // Children should be one level deeper
-      const childLevel = level + 1;
+      
+      // Get the current level from the directory's data-level attribute
+      const currentLevel = parseInt(directory.dataset.level, 10);
+      const childLevel = currentLevel + 1;
+
       if (frame && !frame.src) {
         frame.src = `/repositories/${repoId}/tree?path=${encodeURIComponent(dirPath)}&level=${childLevel}`;
       }

@@ -7,41 +7,46 @@ class ProgressTrackingService
   end
   
   def calculate_progress
-    # Handle case when repository or user is nil
+    # Handle case when repository or user is nil before hitting cache or calculations
     return empty_progress_data unless repository.present? && user.present?
+
+    cache_key = "user/\#{user.id}/repository/\#{repository.id}/progress_data_v2" # Added _v2 for potential structure changes
     
-    # Load repository files and viewed files in bulk to avoid N+1 queries
-    repository_files = repository.repository_files || []
-    viewed_file_ids = if repository_files.present?
-      user.file_views.where(repository_file_id: repository_files.pluck(:id)).pluck(:repository_file_id).to_set
-    else
-      Set.new
+    Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+      # Load repository files and viewed files in bulk to avoid N+1 queries
+      # repository_files_relation = repository.repository_files # Avoid loading all into memory unless needed
+      viewed_file_ids = user.file_views
+                            .joins(:repository_file)
+                            .where(repository_files: { repository_id: repository.id })
+                            .pluck(:repository_file_id).to_set
+      
+      # Get key file paths from concepts in a single pass
+      key_file_paths = fetch_key_file_paths
+      
+      # Find key files in a single query
+      key_files = key_file_paths.present? ? repository.repository_files.where(path: key_file_paths) : []
+      
+      # Calculate progress metrics
+      # Use counter cache for total files count for efficiency
+      total_files_count = repository.repository_files_count 
+      viewed_files_count = viewed_file_ids.count
+      files_progress_percentage = total_files_count > 0 ? ((viewed_files_count.to_f / total_files_count) * 100).round(1) : 0
+      
+      key_files_count = key_files.count
+      viewed_key_files_count = key_files.count { |file| viewed_file_ids.include?(file.id) }
+      key_files_progress_percentage = key_files_count > 0 ? ((viewed_key_files_count.to_f / key_files_count) * 100).round(1) : 0
+      
+      {
+        # repository: repository, # Avoid caching full AR objects if not strictly needed for the partial
+        repository_id: repository.id, # Pass ID instead
+        total_files_count: total_files_count,
+        viewed_files_count: viewed_files_count,
+        files_progress_percentage: files_progress_percentage,
+        key_files_count: key_files_count,
+        viewed_key_files_count: viewed_key_files_count,
+        key_files_progress_percentage: key_files_progress_percentage
+      }
     end
-    
-    # Get key file paths from concepts in a single pass
-    key_file_paths = fetch_key_file_paths
-    
-    # Find key files in a single query
-    key_files = key_file_paths.present? ? repository.repository_files.where(path: key_file_paths) : []
-    
-    # Calculate progress metrics
-    total_files_count = repository_files.count
-    viewed_files_count = viewed_file_ids.count
-    files_progress_percentage = total_files_count > 0 ? ((viewed_files_count.to_f / total_files_count) * 100).round(1) : 0
-    
-    key_files_count = key_files.count
-    viewed_key_files_count = key_files.count { |file| viewed_file_ids.include?(file.id) }
-    key_files_progress_percentage = key_files_count > 0 ? ((viewed_key_files_count.to_f / key_files_count) * 100).round(1) : 0
-    
-    {
-      repository: repository,
-      total_files_count: total_files_count,
-      viewed_files_count: viewed_files_count,
-      files_progress_percentage: files_progress_percentage,
-      key_files_count: key_files_count,
-      viewed_key_files_count: viewed_key_files_count,
-      key_files_progress_percentage: key_files_progress_percentage
-    }
   end
   
   def broadcast_progress_update
@@ -49,21 +54,21 @@ class ProgressTrackingService
     
     # Broadcast to multiple channels based on context
     [
-      "repository_#{repository.id}",          # General repository stream
-      "repository_#{repository.id}_progress", # Specific progress stream
-      "user_#{user.id}"                       # User-specific stream
+      "repository_#{@repository.id}",          # General repository stream
+      "repository_#{@repository.id}_progress", # Specific progress stream
+      "user_#{@user.id}"                       # User-specific stream
     ].each do |stream_name|
       Turbo::StreamsChannel.broadcast_replace_to(
         stream_name,
-        target: "repository_progress_#{repository.id}",
+        target: "repository_progress_#{@repository.id}",
         partial: "repositories/progress",
-        locals: progress_data
+        locals: { repository: @repository }.merge(progress_data)
       )
     end
     
     # Also broadcast a notification for new file view
     Turbo::StreamsChannel.broadcast_append_to(
-      "repository_#{repository.id}_notifications",
+      "repository_#{@repository.id}_notifications",
       target: "repository_notifications",
       partial: "shared/notification",
       locals: { 
@@ -80,7 +85,7 @@ class ProgressTrackingService
   
   def empty_progress_data
     {
-      repository: repository,
+      repository_id: repository.id,
       total_files_count: 0,
       viewed_files_count: 0,
       files_progress_percentage: 0,

@@ -38,35 +38,8 @@ class AiResponseCache < ApplicationRecord
   
   # New thread-safe method for caching in background
   def self.background_cache(repository_id, file_path, cache_type, content)
-    Thread.new do
-      begin
-        ActiveRecord::Base.connection_pool.with_connection do
-          record = find_by(
-            repository_id: repository_id,
-            file_path: file_path,
-            cache_type: cache_type
-          )
-          
-          if record
-            record.update(content: content)
-          else
-            create(
-              repository_id: repository_id,
-              file_path: file_path,
-              cache_type: cache_type,
-              content: content
-            )
-          end
-          Rails.logger.info("Response cached successfully in background")
-        end
-      rescue => e
-        Rails.logger.error("Error in background_cache: #{e.message}")
-      ensure
-        ActiveRecord::Base.connection.close
-      end
-    end
-    
-    # Return true to indicate that background caching was initiated
+    CacheAiResponseJob.perform_later(repository_id, file_path, cache_type, content)
+    # Return true to indicate that background caching was initiated (optional, depends on desired behavior)
     true
   end
   

@@ -32,33 +32,39 @@ class Repository < ApplicationRecord
   end
   
   def explorer_count
-    # Find all users who have viewed any file in this repository
-    User.joins(file_views: :repository_file)
-        .where(repository_files: { repository_id: id })
-        .distinct
-        .count
+    Rails.cache.fetch("repository/#{id}/explorer_count", expires_in: 15.minutes) do
+      # Find all users who have viewed any file in this repository
+      User.joins(file_views: :repository_file)
+          .where(repository_files: { repository_id: id })
+          .distinct
+          .count
+    end
   end
   
   # Repository statistics
   def language_stats
-    stats = repository_files
-      .where.not(language: [nil, '', 'plaintext'])
-      .group(:language)
-      .count
-      .sort_by { |_, count| -count }
-      .take(3)
+    Rails.cache.fetch("repository/#{id}/language_stats", expires_in: 1.hour) do
+      stats = repository_files
+        .where.not(language: [nil, '', 'plaintext'])
+        .group(:language)
+        .count
+        .sort_by { |_, count| -count }
+        .take(3)
+        
+      # Return empty array if no language stats found
+      return [] if stats.empty?
       
-    # Return empty array if no language stats found
-    return [] if stats.empty?
-    
-    total_files = stats.sum { |_, count| count }
-    
-    stats.map do |language, count|
-      {
-        language: language,
-        count: count,
-        percentage: ((count.to_f / total_files) * 100).round
-      }
+      # For percentage of total *relevant* files (those with language):
+      total_relevant_files = repository_files.where.not(language: [nil, '', 'plaintext']).count
+      return [] if total_relevant_files == 0 # Avoid division by zero if no files have language
+      
+      stats.map do |language, count|
+        {
+          language: language,
+          count: count,
+          percentage: ((count.to_f / total_relevant_files) * 100).round
+        }
+      end
     end
   end
   
@@ -68,15 +74,15 @@ class Repository < ApplicationRecord
   end
   
   def total_lines_of_code
-    # Improved to avoid N+1 query issue
-    repository_files.sum("(LENGTH(content) - LENGTH(REPLACE(content, '\n', ''))) + 1")
+    # Use the pre-calculated lines_of_code from repository_files
+    repository_files.sum(:lines_of_code)
   end
   
-  def average_file_size
+  def total_size_in_bytes
     count = repository_files.count
     return 0 if count == 0
     
-    # Get the sum of all file sizes instead of average
+    # Get the sum of all file sizes
     total_size = repository_files.sum(:size)
     total_size
   end

@@ -35,7 +35,8 @@ class RepositoriesController < ApplicationController
       @viewed_file_ids = Set.new
     end
     
-    @directory_structure = build_directory_structure(@repository_files || [])
+    # For initial view, get the top-level structure
+    @directory_level_structure = build_level_specific_directory_structure(@repository, "")
   end
 
   def new
@@ -125,18 +126,20 @@ class RepositoriesController < ApplicationController
   # Return progress data as JSON for real-time updates
   def progress
     progress_service = ProgressTrackingService.new(@repository, current_user)
-    progress_data = progress_service.calculate_progress
+    # calculate_progress will now use caching internally
+    progress_data = progress_service.calculate_progress 
     
     respond_to do |format|
       format.turbo_stream do
         render turbo_stream: turbo_stream.replace(
           "repository_progress_#{@repository.id}",
           partial: "repositories/progress",
-          locals: progress_data
+          locals: { repository: @repository }.merge(progress_data)
         )
       end
       
-      # Keep JSON for backward compatibility
+      # Keep JSON for backward compatibility (ensure it has what it needs)
+      # If JSON consumers also need repository_id, progress_data already has it.
       format.json { render json: progress_data }
     end
   end
@@ -144,20 +147,30 @@ class RepositoriesController < ApplicationController
   # Return the contents of a directory for lazy loading (AJAX)
   def tree
     @repository = Repository.find(params[:id])
-    @repository_files = @repository.repository_files.includes(:file_views)
-    @viewed_file_ids = current_user.file_views.where(repository_file_id: @repository_files.pluck(:id)).pluck(:repository_file_id).to_set
+    requested_path = params[:path].to_s
 
-    # Get the requested path (empty string means root)
-    path = params[:path].to_s
+    # Fetch and build structure for the current requested level only
+    @directory_level_structure = build_level_specific_directory_structure(@repository, requested_path)
+    
+    # For the partial, we need to know which files the user has viewed among those being displayed
+    # This can be optimized further if @directory_level_structure contains file objects or IDs
+    # For now, let's assume the partial can handle this or we pass necessary file IDs.
+    # If `build_level_specific_directory_structure` returns file objects or enough info,
+    # this might not be needed or can be more targeted.
+    # For simplicity, keeping a way to check viewed status, but this is broad:
+    @viewed_file_ids = current_user.file_views
+                                 .joins(:repository_file)
+                                 .where(repository_files: { repository_id: @repository.id })
+                                 .pluck(:repository_file_id).to_set
 
-    # Build a directory structure for just the requested path
-    structure = build_directory_structure(@repository_files)
-    tree = path.blank? ? structure : path.split('/').reduce(structure) { |acc, part| acc[part] if acc }
-    tree ||= {}
-
-    # Render the directory_tree partial inside a Turbo Frame
-    level = params[:level].present? ? params[:level].to_i : 1
-    render partial: 'directory_tree_frame', locals: { tree: tree, parent_path: path, level: level }, layout: false
+    level = params[:level].present? ? params[:level].to_i : 0 # Assuming root is level 0
+    render partial: 'directory_tree_frame', locals: { 
+                                              repository: @repository, # Pass repository for URLs/IDs
+                                              tree_level_data: @directory_level_structure, 
+                                              parent_path: requested_path, 
+                                              level: level, 
+                                              viewed_file_ids: @viewed_file_ids 
+                                            }, layout: false
   end
 
   private
@@ -222,5 +235,56 @@ class RepositoriesController < ApplicationController
     end
     
     structure
+  end
+
+  # Build a nested hash representing one level of the directory structure
+  def build_level_specific_directory_structure(repository, base_path)
+    cache_key = "repository/#{repository.id}/tree_level/#{Digest::MD5.hexdigest(base_path)}" # Hash base_path if it can be very long
+    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      structure = {}
+      current_path_prefix = base_path.blank? ? "" : "#{base_path}/"
+      # depth = base_path.blank? ? 1 : base_path.count('/') + 2 # Not actively used, can remove if confirmed
+
+      # Fetch all paths that start with the current_path_prefix
+      paths_under_prefix = repository.repository_files
+                                  .where("path LIKE ?", "#{current_path_prefix}%")
+                                  .pluck(:path)
+
+      direct_children_names = Set.new
+      paths_under_prefix.each do |full_path|
+        relative_path = full_path.sub(current_path_prefix, '')
+        next if relative_path.blank?
+
+        first_part = relative_path.split('/').first
+        direct_children_names.add(first_part) if first_part.present?
+      end
+
+      potential_file_paths = direct_children_names.map { |name| current_path_prefix + name }
+      
+      child_files_map = repository.repository_files
+                                  .where(path: potential_file_paths)
+                                  # .includes(:file_views) # Careful with caching complex objects; file_views might not be needed here
+                                  .select(:id, :path, :is_key_file) # Select only necessary attributes for caching
+                                  .index_by(&:path)
+
+      direct_children_names.sort.each do |name|
+        full_child_path = current_path_prefix + name
+        is_directory = paths_under_prefix.any? { |p| p.start_with?("#{full_child_path}/") }
+
+        if is_directory
+          structure[name] = { type: :directory, path: full_child_path } 
+        elsif (file_record = child_files_map[full_child_path])
+          structure[name] = {
+            type: :file,
+            id: file_record.id,
+            path: file_record.path,
+            is_key_file: file_record.is_key_file || false
+          }
+        else
+          Rails.logger.warn "Could not fully resolve child: #{name} under #{current_path_prefix} during cache population for key #{cache_key}"
+        end
+      end
+      structure
+    end # End Rails.cache.fetch
   end
 end

@@ -39,6 +39,15 @@ class RepositorySyncJob < ApplicationJob
       file_count = repository.repository_files.count
       repository.update_column(:repository_files_count, file_count)
       
+      # Clear cached statistics that depend on file content
+      Rails.cache.delete("repository/#{repository.id}/language_stats")
+      Rails.logger.info("Cleared language_stats cache for repository #{repository.id}")
+      
+      # Clear directory structure cache for this repository
+      tree_cache_pattern = "repository/#{repository.id}/tree_level/*"
+      Rails.cache.delete_matched(tree_cache_pattern)
+      Rails.logger.info("Cleared directory tree cache for repository #{repository.id} (pattern: #{tree_cache_pattern})")
+      
     rescue => e
       Rails.logger.error("Error syncing repository #{repository.id}: #{e.message}")
       repository.update(status: 'error', error_message: e.message)

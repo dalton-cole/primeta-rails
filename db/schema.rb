@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_12_233449) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_13_120758) do
   create_table "achievements", force: :cascade do |t|
     t.string "name", null: false
     t.text "description", null: false
@@ -93,6 +93,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_12_233449) do
     t.string "current_commit_hash"
     t.integer "repository_files_count", default: 0
     t.integer "key_concepts_count", default: 0
+    t.index ["git_url"], name: "index_repositories_on_git_url", unique: true
+    t.index ["key_concepts_count"], name: "index_repositories_on_key_concepts_count"
+    t.index ["repository_files_count"], name: "index_repositories_on_repository_files_count"
   end
 
   create_table "repository_files", force: :cascade do |t|
@@ -107,10 +110,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_12_233449) do
     t.boolean "is_key_file", default: false
     t.boolean "is_root", default: false, null: false
     t.integer "file_views_count", default: 0
+    t.integer "lines_of_code", default: 0, null: false
+    t.index ["file_views_count"], name: "index_repository_files_on_file_views_count"
     t.index ["is_key_file"], name: "index_repository_files_on_is_key_file"
     t.index ["is_root"], name: "index_repository_files_on_is_root"
+    t.index ["language"], name: "index_repository_files_on_language"
+    t.index ["repository_id", "language"], name: "index_repository_files_on_repository_id_and_language"
     t.index ["repository_id", "path"], name: "index_repository_files_on_repository_id_and_path"
     t.index ["repository_id"], name: "index_repository_files_on_repository_id"
+    t.index ["size"], name: "index_repository_files_on_size"
   end
 
   create_table "scavenger_hunt_items", force: :cascade do |t|
@@ -173,6 +181,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_12_233449) do
     t.string "uid"
     t.integer "file_views_count", default: 0
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["file_views_count"], name: "index_users_on_file_views_count"
+    t.index ["github_username"], name: "index_users_on_github_username"
+    t.index ["provider", "uid"], name: "index_users_on_provider_and_uid"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 

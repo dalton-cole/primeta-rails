@@ -8,6 +8,7 @@ class RepositoryFile < ApplicationRecord
   
   # Callbacks
   before_save :detect_language, if: -> { language.blank? && path.present? }
+  before_save :update_lines_of_code, if: :content_changed_for_lo_c?
   
   # Instance Methods
   def filename
@@ -26,5 +27,19 @@ class RepositoryFile < ApplicationRecord
   
   def detect_language
     self.language = LanguageDetectionService.detect_language(path)
+  end
+
+  def content_changed_for_lo_c?
+    content_changed? || (new_record? && content.present?)
+  end
+
+  def update_lines_of_code
+    if content.present? # Specifically, not nil and not empty string
+      # Count newline characters. Add 1 because a file with 0 newlines has 1 line.
+      self.lines_of_code = content.count("\n") + 1
+    else
+      # Covers nil content or empty string content
+      self.lines_of_code = 0
+    end
   end
 end

@@ -32,7 +32,7 @@
     </div>
     <div class="stat-item">
       <i class="fas fa-hdd"></i>
-      <span><%= number_to_human_size(repository.average_file_size) %></span>
+      <span><%= number_to_human_size(repository.total_size_in_bytes) %></span>
     </div>
     <% if repository.short_commit_hash %>
       <div class="stat-item commit-hash">

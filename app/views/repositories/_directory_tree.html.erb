@@ -1,24 +1,30 @@
-<%# Recursively render a directory tree %>
-<% tree.each do |name, content| %>
-  <% if content.is_a?(Hash) && content[:file_id].nil? %>
-    <%# This is a directory %>
-    <% dir_path = parent_path.present? ? "#{parent_path}/#{name}" : name %>
-    <div class="directory" data-path="<%= dir_path %>" style="margin-left: <%= level * 16 %>px;">
+<%# Render one level of a directory tree %>
+<%# tree_level_data is a hash: { name => { type: :file/:directory, id: (for files), path: (full_path) } } %>
+<%# viewed_file_ids is a Set of file IDs the current user has viewed %>
+<%# repository is the @repository object %>
+<%# level is the current depth, parent_path is the path of the parent directory %>
+
+<% tree_level_data.each do |name, item_data| %>
+  <% if item_data[:type] == :directory %>
+    <% dir_path = item_data[:path] %>
+    <%# The `level` attribute here is the *current* level of this directory item %>
+    <div class="directory" data-path="<%= dir_path %>" data-level="<%= level %>" style="margin-left: <%= level * 16 %>px;">
       <div class="directory-label" data-action="click->file-explorer#toggleDirectory">
         <i class="fas fa-caret-right"></i>
         <i class="fas fa-folder folder-icon"></i>
         <span class="dir-name"><%= name %></span>
       </div>
       <turbo-frame id="dir_<%= dir_path.parameterize(separator: '_') %>">
-        <!-- Empty by default; src will be set on expand by JS -->
+        <%# Content will be loaded here when expanded. %>
+        <%# The file_explorer_controller will set the src attribute %>
+        <%# to `tree_repository_path(repository, path: dir_path, level: level + 1)` %>
       </turbo-frame>
     </div>
-  <% else %>
-    <%# This is a file %>
-    <% file_id = content[:file_id] %>
-    <% viewed = @viewed_file_ids&.include?(file_id) %>
-    <% is_key = content[:is_key_file] %>
-    <% file_path = parent_path.present? ? "#{parent_path}/#{name}" : name %>
+  <% elsif item_data[:type] == :file %>
+    <% file_id = item_data[:id] %>
+    <% file_path = item_data[:path] %>
+    <% viewed = viewed_file_ids&.include?(file_id) %>
+    <% is_key = item_data[:is_key_file] || false %> 
     <% file_ext = File.extname(name).downcase %>
     
     <div class="file-item" style="margin-left: <%= (level + 1) * 16 %>px;">

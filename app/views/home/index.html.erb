@@ -74,7 +74,7 @@
                 </div>
                 <div class="stat-item">
                   <i class="fas fa-hdd"></i>
-                  <span><%= number_to_human_size(repo.average_file_size * repo.file_count) %></span>
+                  <span><%= number_to_human_size(repo.total_size_in_bytes) %></span>
                 </div>
                 <% if repo.short_commit_hash %>
                   <div class="stat-item commit-hash">

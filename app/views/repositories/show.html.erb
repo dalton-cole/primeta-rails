@@ -32,7 +32,13 @@
         <div class="file-explorer" data-controller="file-explorer" data-file-explorer-repository-id-value="<%= @repository.id %>">
           <div class="file-tree">
             <%# Only the root directory is rendered; subdirectories are loaded on demand %>
-            <%= render partial: 'directory_tree', locals: { tree: @directory_structure, level: 0, parent_path: '' } %>
+            <%= render partial: 'directory_tree', locals: { 
+                                                    repository: @repository,
+                                                    tree_level_data: @directory_level_structure, 
+                                                    level: 0, 
+                                                    parent_path: '', 
+                                                    viewed_file_ids: @viewed_file_ids 
+                                                  } %>
           </div>
         </div>
       <% else %>

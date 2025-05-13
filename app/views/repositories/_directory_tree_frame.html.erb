@@ -1,3 +1,9 @@
 <turbo-frame id="dir_<%= parent_path.parameterize(separator: '_') %>">
-  <%= render partial: 'directory_tree', locals: { tree: tree, level: (defined?(level) ? level : 1), parent_path: parent_path } %>
+  <%= render partial: 'directory_tree', locals: { 
+                                          repository: repository, 
+                                          tree_level_data: tree_level_data, 
+                                          level: level, 
+                                          parent_path: parent_path, 
+                                          viewed_file_ids: viewed_file_ids 
+                                        } %>
 </turbo-frame> 

@@ -31,9 +31,7 @@ class FileViewTrackingService
       Rails.logger.error("Failed to save file_view: #{file_view.errors.full_messages.join(', ')}")
     end
     
-    # Update progress
-    progress_service = ProgressTrackingService.new(@repository, @user)
-    progress_service.broadcast_progress_update
+    # The FileView model's after_commit callback will handle broadcasting progress updates.
     
     file_view
   end
