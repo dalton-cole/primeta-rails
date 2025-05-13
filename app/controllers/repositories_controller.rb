@@ -125,7 +125,20 @@ class RepositoriesController < ApplicationController
   # Return progress data as JSON for real-time updates
   def progress
     progress_service = ProgressTrackingService.new(@repository, current_user)
-    render json: progress_service.calculate_progress
+    progress_data = progress_service.calculate_progress
+    
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "repository_progress_#{@repository.id}",
+          partial: "repositories/progress",
+          locals: progress_data
+        )
+      end
+      
+      # Keep JSON for backward compatibility
+      format.json { render json: progress_data }
+    end
   end
 
   # Return the contents of a directory for lazy loading (AJAX)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_12_222743) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_12_233449) do
   create_table "achievements", force: :cascade do |t|
     t.string "name", null: false
     t.text "description", null: false
@@ -61,7 +61,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_12_222743) do
     t.integer "total_time_spent"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "repository_id"
     t.index ["repository_file_id"], name: "index_file_views_on_repository_file_id"
+    t.index ["repository_id"], name: "index_file_views_on_repository_id"
     t.index ["user_id", "repository_file_id"], name: "index_file_views_on_user_id_and_repository_file_id"
     t.index ["user_id"], name: "index_file_views_on_user_id"
   end

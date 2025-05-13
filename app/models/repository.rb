@@ -27,7 +27,8 @@ class Repository < ApplicationRecord
   end
   
   def file_count
-    repository_files_count || repository_files.count
+    # Use the counter cache if available, otherwise perform a count
+    repository_files_count.to_i > 0 ? repository_files_count : repository_files.count
   end
   
   def explorer_count
@@ -75,10 +76,9 @@ class Repository < ApplicationRecord
     count = repository_files.count
     return 0 if count == 0
     
-    avg = repository_files.average(:size)
-    return 0 if avg.nil?
-    
-    avg.to_i
+    # Get the sum of all file sizes instead of average
+    total_size = repository_files.sum(:size)
+    total_size
   end
   
   def quick_stats

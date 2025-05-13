@@ -358,6 +358,7 @@
   border: 1px solid rgba(99, 102, 241, 0.2);
   max-width: 100%;
   overflow-x: auto;
+  position: relative;
 }
 
 .ai-code-block code {
@@ -370,7 +371,36 @@
   color: #f8f8f2;
   background: transparent;
   border-radius: 0;
-  white-space: pre;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-code-block code br {
+  display: block; /* Ensure line breaks work in code blocks */
+  content: "";
+  margin-bottom: 0.5em;
+}
+
+/* Syntax highlighting for various languages */
+.ai-code-block .language-ruby .keyword,
+.ai-code-block .language-js .keyword,
+.ai-code-block .language-javascript .keyword,
+.ai-code-block .language-typescript .keyword {
+  color: #ff79c6;
+}
+
+.ai-code-block .language-ruby .string,
+.ai-code-block .language-js .string,
+.ai-code-block .language-javascript .string,
+.ai-code-block .language-typescript .string {
+  color: #f1fa8c;
+}
+
+.ai-code-block .language-ruby .constant,
+.ai-code-block .language-js .constant,
+.ai-code-block .language-javascript .constant,
+.ai-code-block .language-typescript .constant {
+  color: #bd93f9;
 }
 
 /* Properly style lists */
@@ -383,6 +413,13 @@
 .ai-list-item {
   margin: 6px 0;
   padding-left: 4px;
+}
+
+/* Add ordered list styles */
+.ai-ordered-list {
+  margin: 12px 0 12px 16px;
+  padding-left: 16px;
+  list-style-type: decimal;
 }
 
 /* Headings with different sizes for different header levels */
@@ -849,4 +886,82 @@
 .ai-tab-content .key-file-item {
   padding-left: 0.5rem;
   border-radius: 4px;
+}
+
+/* Loading placeholder styling for better UX */
+.ai-loading-placeholder {
+  padding: 10px 0;
+  animation: pulse 1.5s infinite;
+}
+
+.placeholder-line {
+  height: 12px;
+  margin-bottom: 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 0.2) 0%,
+    rgba(99, 102, 241, 0.3) 50%,
+    rgba(99, 102, 241, 0.2) 100%
+  );
+  border-radius: 4px;
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+.placeholder-paragraph {
+  margin-bottom: 16px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Improved error state styling */
+.ai-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+  color: #FB7185;
+}
+
+.ai-error-state i {
+  font-size: 24px;
+  margin-bottom: 16px;
+  color: #F43F5E;
+}
+
+.ai-error-state p {
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.retry-button {
+  background-color: rgba(244, 63, 94, 0.1);
+  color: #FB7185;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.retry-button:hover {
+  background-color: rgba(244, 63, 94, 0.2);
+  border-color: rgba(244, 63, 94, 0.5);
+}
+
+/* Properly style ordered lists */
+.ai-ordered-list {
+  margin: 12px 0 12px 16px;
+  padding-left: 16px;
+  list-style-type: decimal;
 } 

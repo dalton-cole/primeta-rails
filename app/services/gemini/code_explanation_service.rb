@@ -77,19 +77,37 @@ module Gemini
       extension = File.extname(file_path)
       language = determine_language(extension)
       
+      # Truncate very large files and add note
+      original_length = file_content.to_s.length
+      max_length = 12000
+      truncated = false
+      
+      if original_length > max_length
+        file_content = file_content.to_s[0...max_length]
+        truncated = true
+        Rails.logger.info("File content truncated from #{original_length} to #{max_length} characters")
+      end
+      
+      truncation_notice = truncated ? "[Note: File was truncated from #{original_length} chars for performance]" : ""
+      
       <<~PROMPT
-        You are a technical mentor explaining code to a developer who is exploring this codebase.
-        Provide a clear, concise explanation of the following code file.
+        You are explaining code to a developer exploring a codebase. Be concise and technical.
         
-        First, explain the file's purpose and its role in the system.
-        Then highlight the key components, functions, or classes in the file.
-        Finally, explain any important patterns or techniques used.
-        
-        Be straightforward and technical, but accessible to developers.
-        Keep your explanation under 400 words.
-        
+        #{truncation_notice}
         File: #{file_path}
         Language: #{language}
+        
+        Your task:
+        1. Purpose: What does this file do? (1-2 sentences)
+        2. Key components: Identify main classes/functions (bullet points)
+        3. Notable patterns or techniques used (if any)
+        
+        IMPORTANT FORMATTING INSTRUCTIONS:
+        - Keep under 350 words total
+        - Focus on essentials
+        - Use markdown formatting for headings, lists, and code snippets
+        - DO NOT wrap your entire response in ```markdown blocks
+        - Your response will be rendered as markdown directly
         
         Code:
         #{file_content}
@@ -100,26 +118,37 @@ module Gemini
       extension = File.extname(file_path)
       language = determine_language(extension)
       
+      # Truncate very large files and add note
+      original_length = file_content.to_s.length
+      max_length = 12000
+      truncated = false
+      
+      if original_length > max_length
+        file_content = file_content.to_s[0...max_length]
+        truncated = true
+        Rails.logger.info("File content truncated from #{original_length} to #{max_length} characters")
+      end
+      
+      truncation_notice = truncated ? "[Note: File was truncated from #{original_length} chars for performance]" : ""
+      
       <<~PROMPT
-        You are a senior developer providing constructive feedback on code.
-        Review the following code file and suggest potential improvements.
+        Review this code and suggest 2-3 high-impact improvements:
         
-        Focus on:
-        1. Code quality and maintainability
-        2. Performance considerations
-        3. Security implications
-        4. Best practices for #{language}
-        5. Design patterns that might be applicable
-        
-        For each suggestion:
-        - Explain why it's an improvement
-        - Show a brief example of the improved code when applicable
-        - Note the priority (high/medium/low)
-        
-        Be constructive and practical. Focus on the most impactful improvements.
-        
+        #{truncation_notice}
         File: #{file_path}
         Language: #{language}
+        
+        For each suggestion:
+        - What to improve (1 sentence)
+        - Why it matters (1 sentence)
+        - Brief code example if relevant
+        
+        IMPORTANT FORMATTING INSTRUCTIONS:
+        - Focus on: performance, security, maintainability, or #{language} best practices
+        - Be specific and concise
+        - Use markdown formatting for headings, lists, and code snippets
+        - DO NOT wrap your entire response in ```markdown blocks
+        - Your response will be rendered as markdown directly
         
         Code:
         #{file_content}
@@ -130,43 +159,48 @@ module Gemini
       extension = File.extname(file_path)
       language = determine_language(extension)
       
-      # If repository is provided, include information about its key concepts
+      # Truncate very large files and add note
+      original_length = file_content.to_s.length
+      max_length = 12000
+      truncated = false
+      
+      if original_length > max_length
+        file_content = file_content.to_s[0...max_length]
+        truncated = true
+        Rails.logger.info("File content truncated from #{original_length} to #{max_length} characters")
+      end
+      
+      # Include brief concept info if available
       concepts_context = if repository && repository.key_concepts.exists?
-                          concepts = repository.key_concepts.map do |concept|
-                            "- #{concept.name}: #{concept.description.truncate(100)}"
-                          end.join("\n")
+                          concepts = repository.key_concepts.map do |concept| 
+                            concept.name
+                          end.join(", ")
                           
-                          "This file is part of a repository with these key concepts:\n#{concepts}\n\n"
+                          "Related concepts: #{concepts}"
                         else
                           ""
                         end
       
+      truncation_notice = truncated ? "[Note: File was truncated from #{original_length} chars for performance]" : ""
+      
       <<~PROMPT
-        You are creating interactive learning challenges based on a code file.
-        Design learning exercises that will help developers understand this code and the concepts it demonstrates.
+        Create learning challenges for this file:
         
-        #{concepts_context}
+        #{truncation_notice}
         File: #{file_path}
         Language: #{language}
+        #{concepts_context}
         
-        Create the following for this code file:
+        Provide:
+        1. 2 multiple-choice questions about the code
+        2. 1 practical coding challenge
+        3. 1 extension idea
         
-        1. QUIZ QUESTIONS (3 multiple-choice questions):
-        - Test understanding of the code's purpose and functionality
-        - Include questions with varying difficulty
-        - Provide the correct answer and explanation for each
-        
-        2. CODE CHALLENGES (2 practical challenges):
-        - Brief description of the task
-        - Starting point (code snippets if needed)
-        - Hints for completing the task
-        - Solution or expected outcomes
-        
-        3. EXTENSION ACTIVITIES (1-2 ideas):
-        - Suggestions for how developers could extend or modify this code
-        - What they would learn from this extension
-        
-        Format each section clearly with headings. Focus on challenges that teach important programming concepts demonstrated in this file.
+        IMPORTANT FORMATTING INSTRUCTIONS:
+        - Keep your response under 800 words
+        - Use markdown formatting for headings, lists, and code snippets
+        - DO NOT wrap your entire response in ```markdown blocks 
+        - Your response will be rendered as markdown directly
         
         Code:
         #{file_content}

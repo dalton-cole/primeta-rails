@@ -47,11 +47,30 @@ class ProgressTrackingService
   def broadcast_progress_update
     progress_data = calculate_progress
     
-    Turbo::StreamsChannel.broadcast_replace_to(
-      "repository_#{repository.id}_progress",
-      target: "repository_progress_#{repository.id}",
-      partial: "repositories/progress",
-      locals: progress_data
+    # Broadcast to multiple channels based on context
+    [
+      "repository_#{repository.id}",          # General repository stream
+      "repository_#{repository.id}_progress", # Specific progress stream
+      "user_#{user.id}"                       # User-specific stream
+    ].each do |stream_name|
+      Turbo::StreamsChannel.broadcast_replace_to(
+        stream_name,
+        target: "repository_progress_#{repository.id}",
+        partial: "repositories/progress",
+        locals: progress_data
+      )
+    end
+    
+    # Also broadcast a notification for new file view
+    Turbo::StreamsChannel.broadcast_append_to(
+      "repository_#{repository.id}_notifications",
+      target: "repository_notifications",
+      partial: "shared/notification",
+      locals: { 
+        message: "Progress updated: #{progress_data[:files_progress_percentage]}% complete",
+        type: "info",
+        duration: 3000
+      }
     )
     
     progress_data

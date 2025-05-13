@@ -91,3 +91,77 @@ window.applyPrimetaTheme = function() {
     defineMonacoTheme();
   });
 })();
+
+// Monaco Editor Global Loader
+window.loadMonacoEditor = function(callback) {
+  if (window.monaco) {
+    // Monaco already loaded, just apply the theme and call callback
+    if (typeof window.applyPrimetaTheme === 'function') {
+      window.applyPrimetaTheme();
+    }
+    if (typeof callback === 'function') {
+      callback();
+    }
+    return;
+  }
+  
+  // Check if Monaco is already being loaded by another controller
+  if (window.monacoLoading) {
+    // Wait for the current loading to complete
+    const checkInterval = setInterval(() => {
+      if (window.monaco) {
+        clearInterval(checkInterval);
+        if (typeof window.applyPrimetaTheme === 'function') {
+          window.applyPrimetaTheme();
+        }
+        if (typeof callback === 'function') {
+          callback();
+        }
+      }
+    }, 100);
+    return;
+  }
+  
+  // Start loading Monaco
+  window.monacoLoading = true;
+  console.log("Loading Monaco Editor from CDN...");
+  
+  // Add Monaco loader script
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.40.0/min/vs/loader.js';
+  script.async = true;
+  script.onload = () => {
+    window.require.config({
+      paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.40.0/min/vs' }
+    });
+    
+    window.require(['vs/editor/editor.main'], () => {
+      console.log("Monaco Editor loaded successfully");
+      window.monacoLoading = false;
+      
+      // Apply theme
+      if (typeof window.applyPrimetaTheme === 'function') {
+        window.applyPrimetaTheme();
+      }
+      
+      // Call the callback if provided
+      if (typeof callback === 'function') {
+        callback();
+      }
+    });
+  };
+  
+  document.head.appendChild(script);
+};
+
+// Preload Monaco when the page is idle
+if (typeof window.requestIdleCallback === 'function') {
+  window.requestIdleCallback(() => {
+    window.loadMonacoEditor();
+  });
+} else {
+  // Fallback for browsers that don't support requestIdleCallback
+  setTimeout(() => {
+    window.loadMonacoEditor();
+  }, 1000);
+}

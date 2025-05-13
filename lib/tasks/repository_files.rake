@@ -23,4 +23,23 @@ namespace :repository_files do
     
     puts "Done! Updated language detection for #{updated_count} out of #{total_files} files."
   end
+  
+  desc "Reset counter caches for all repositories"
+  task reset_counter_caches: :environment do
+    puts "Resetting counter caches for all repositories..."
+    
+    Repository.find_each do |repository|
+      puts "Resetting counter for repository: #{repository.name} (ID: #{repository.id})"
+      
+      # Get the actual count
+      file_count = repository.repository_files.count
+      
+      # Update the counter cache manually
+      repository.update_column(:repository_files_count, file_count)
+      
+      puts "  Updated repository_files_count to #{file_count}"
+    end
+    
+    puts "Counter caches have been reset for all repositories."
+  end
 end 

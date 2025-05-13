@@ -13,7 +13,23 @@ module Api
       Rails.logger.info("File Path: #{file_path}")
       Rails.logger.info("Refresh: #{refresh}")
       
-      return render json: { error: "Missing required parameters" }, status: :bad_request unless repository_id.present? && file_path.present?
+      # Validate required parameters
+      if repository_id.blank? || file_path.blank?
+        error_message = []
+        error_message << "Missing repository_id" if repository_id.blank?
+        error_message << "Missing file_path" if file_path.blank?
+        Rails.logger.error("Missing required parameters: #{error_message.join(', ')}")
+        return render json: { error: "Missing required parameters: #{error_message.join(', ')}" }, status: :bad_request
+      end
+      
+      # Normalize file path to remove any leading/trailing whitespace and colons
+      file_path = file_path.strip
+      
+      # Remove any leading colon that may have been accidentally included
+      if file_path.start_with?(':')
+        file_path = file_path[1..-1]
+        Rails.logger.info("Normalized file path by removing leading colon: #{file_path}")
+      end
       
       # Only allow admins to force refresh
       if refresh && !current_user&.admin?
@@ -30,7 +46,7 @@ module Api
       
       if repository_file.nil?
         Rails.logger.error("File not found with path: #{file_path}")
-        return render json: { error: "File not found" }, status: :not_found
+        return render json: { error: "File not found with path: #{file_path}" }, status: :not_found
       end
       
       Rails.logger.info("File found: #{repository_file.path}")
@@ -72,21 +88,50 @@ module Api
         explanation = gemini_service.explain_code(file_path, file_content)
         Rails.logger.info("Explanation generated successfully, length: #{explanation.to_s.length} characters")
         
-        # Cache the result
-        AiResponseCache.find_or_create_for(repository_id, file_path, 'context', explanation)
-        Rails.logger.info("Explanation cached successfully")
+        # Return response immediately
+        cached_flag = false
+        Rails.logger.info("Cache status: #{cached_flag.inspect} (#{cached_flag.class})")
+        response_json = { 
+          file_path: file_path,
+          explanation: explanation,
+          cached: cached_flag
+        }
+        
+        # Cache the result in the background
+        Thread.new do
+          begin
+            ActiveRecord::Base.connection_pool.with_connection do
+              # Use find_by + create or update to handle race conditions
+              cache_record = AiResponseCache.find_by(
+                repository_id: repository_id,
+                file_path: file_path,
+                cache_type: 'context'
+              )
+              
+              if cache_record
+                cache_record.update(content: explanation)
+              else
+                AiResponseCache.create(
+                  repository_id: repository_id,
+                  file_path: file_path,
+                  cache_type: 'context',
+                  content: explanation
+                )
+              end
+              Rails.logger.info("Explanation cached successfully in background thread")
+            end
+          rescue => e
+            Rails.logger.error("Error caching explanation in background: #{e.message}")
+          ensure
+            ActiveRecord::Base.connection.close
+          end
+        end
+        
+        render json: response_json
       rescue => e
         Rails.logger.error("Gemini API error: #{e.message}")
         return render json: { error: "Error generating explanation: #{e.message}" }, status: :internal_server_error
       end
-      
-      cached_flag = false
-      Rails.logger.info("Cache status: #{cached_flag.inspect} (#{cached_flag.class})")
-      render json: { 
-        file_path: file_path,
-        explanation: explanation,
-        cached: cached_flag
-      }
     end
     
     # Get code improvement suggestions for a file
@@ -210,21 +255,50 @@ module Api
         challenges = gemini_service.generate_learning_challenges(file_path, file_content, repository)
         Rails.logger.info("Learning challenges generated successfully, length: #{challenges.to_s.length} characters")
         
-        # Cache the result
-        AiResponseCache.find_or_create_for(repository_id, file_path, 'challenges', challenges)
-        Rails.logger.info("Challenges cached successfully")
+        # Return response immediately
+        cached_flag = false
+        Rails.logger.info("Cache status for challenges: #{cached_flag.inspect} (#{cached_flag.class})")
+        response_json = { 
+          file_path: file_path,
+          challenges: challenges,
+          cached: cached_flag
+        }
+        
+        # Cache the result in the background
+        Thread.new do
+          begin
+            ActiveRecord::Base.connection_pool.with_connection do
+              # Use find_by + create or update to handle race conditions
+              cache_record = AiResponseCache.find_by(
+                repository_id: repository_id,
+                file_path: file_path,
+                cache_type: 'challenges'
+              )
+              
+              if cache_record
+                cache_record.update(content: challenges)
+              else
+                AiResponseCache.create(
+                  repository_id: repository_id,
+                  file_path: file_path,
+                  cache_type: 'challenges',
+                  content: challenges
+                )
+              end
+              Rails.logger.info("Challenges cached successfully in background thread")
+            end
+          rescue => e
+            Rails.logger.error("Error caching challenges in background: #{e.message}")
+          ensure
+            ActiveRecord::Base.connection.close
+          end
+        end
+        
+        render json: response_json
       rescue => e
         Rails.logger.error("Gemini API error: #{e.message}")
         return render json: { error: "Error generating learning challenges: #{e.message}" }, status: :internal_server_error
       end
-      
-      cached_flag = false
-      Rails.logger.info("Cache status for challenges: #{cached_flag.inspect} (#{cached_flag.class})")
-      render json: { 
-        file_path: file_path,
-        challenges: challenges,
-        cached: cached_flag
-      }
     end
     
     # Get related patterns for a file
@@ -495,18 +569,36 @@ module Api
       end
     end
     
-    def fetch_file_content(repository, file_path)
-      # Get content directly from the repository_file
-      repository_file = RepositoryFile.find_by(repository_id: repository.id, path: file_path)
+    # Helper to prioritize requests from important views
+    def prioritize_by_headers
+      priority = request.headers['X-AI-Assistant-Priority']
       
-      if repository_file && repository_file.content.present?
-        repository_file.content
+      if priority == 'high'
+        Rails.logger.info("Handling high priority AI request")
+        # Higher priority requests get more resources/tokens
+        { maxOutputTokens: 1000 }
       else
-        # Fallback implementation
-        repo_path = File.join(Rails.root, 'public', 'repos', repository.name)
-        file_full_path = File.join(repo_path, file_path)
-        File.read(file_full_path)
+        # Standard priority
+        {}
       end
+    end
+    
+    def fetch_file_content(repository, file_path)
+      Rails.logger.info("Fetching content for #{file_path} in repository #{repository.id}")
+      
+      repository_file = repository.repository_files.find_by(path: file_path)
+      
+      if repository_file.nil?
+        Rails.logger.error("RepositoryFile not found with path: #{file_path}")
+        raise "File not found: #{file_path}"
+      end
+      
+      if repository_file.content.blank?
+        Rails.logger.error("RepositoryFile has no content: #{file_path}")
+        raise "File content is empty: #{file_path}"
+      end
+      
+      repository_file.content
     end
   end
 end 

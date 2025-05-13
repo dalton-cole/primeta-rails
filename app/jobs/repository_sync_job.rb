@@ -35,6 +35,10 @@ class RepositorySyncJob < ApplicationJob
         current_commit_hash: current_commit_hash
       )
       
+      # Manually update the repository_files_count
+      file_count = repository.repository_files.count
+      repository.update_column(:repository_files_count, file_count)
+      
     rescue => e
       Rails.logger.error("Error syncing repository #{repository.id}: #{e.message}")
       repository.update(status: 'error', error_message: e.message)

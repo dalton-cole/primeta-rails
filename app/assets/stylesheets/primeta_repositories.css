@@ -1053,8 +1053,16 @@
 }
 
 .file-item a.viewed-file {
-  color: var(--text-accent);
+  color: #4ade80 !important; /* Green color for viewed files */
   font-weight: 500;
+}
+
+/* Additional style for current selection */
+.file-item a.current-file.viewed-file {
+  color: #4ade80 !important;
+  font-weight: 600;
+  background-color: rgba(74, 222, 128, 0.1);
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.3);
 }
 
 .file-item a i {
@@ -1685,4 +1693,37 @@
 
 .file-explorer::-webkit-scrollbar-thumb:hover {
   background-color: rgba(99, 102, 241, 0.6);
+}
+
+/* File highlighting */
+.file-item a.current-file {
+  background-color: rgba(99, 102, 241, 0.2);
+  color: var(--text-accent);
+  font-weight: 600;
+  border-radius: 4px;
+  padding-left: 8px;
+  margin-left: -8px;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.3);
+}
+
+.file-item a.viewed-file {
+  color: #4ade80; /* Green color for viewed files */
+  font-weight: 500;
+}
+
+.file-item a i {
+  color: var(--text-tertiary);
+  width: 16px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.selected-file-item {
+  background-color: rgba(99, 102, 241, 0.1);
+  border-radius: 4px;
+}
+
+.selected-key-file {
+  background-color: rgba(99, 102, 241, 0.2) !important;
+  border: 1px solid rgba(99, 102, 241, 0.3) !important;
 } 

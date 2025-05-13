@@ -1,24 +1,73 @@
 class AiResponseCache < ApplicationRecord
   belongs_to :repository
   
-  validates :repository_id, :file_path, :cache_type, :content, presence: true
-  validates :cache_type, inclusion: { in: ['context', 'challenges'] }
+  validates :repository_id, presence: true
+  validates :file_path, presence: true
+  validates :cache_type, presence: true
+  validates :content, presence: true
   
   # Find or create a cache entry
   def self.find_or_create_for(repository_id, file_path, cache_type, content)
-    cache_record = find_or_initialize_by(
-      repository_id: repository_id,
-      file_path: file_path,
-      cache_type: cache_type
-    )
-    
-    # Update content if it's a new record or content has changed
-    if cache_record.new_record? || cache_record.content != content
-      cache_record.content = content
-      cache_record.save
+    begin
+      Rails.logger.info("Looking for cached #{cache_type} response for file #{file_path}")
+      record = find_by(
+        repository_id: repository_id,
+        file_path: file_path,
+        cache_type: cache_type
+      )
+
+      if record
+        Rails.logger.info("Found existing cache record, updating...")
+        record.update(content: content)
+        record
+      else
+        Rails.logger.info("No cache record found, creating new...")
+        create(
+          repository_id: repository_id,
+          file_path: file_path,
+          cache_type: cache_type,
+          content: content
+        )
+      end
+    rescue => e
+      Rails.logger.error("Error in find_or_create_for: #{e.message}")
+      # Return nil instead of raising to prevent API response failures
+      nil
+    end
+  end
+  
+  # New thread-safe method for caching in background
+  def self.background_cache(repository_id, file_path, cache_type, content)
+    Thread.new do
+      begin
+        ActiveRecord::Base.connection_pool.with_connection do
+          record = find_by(
+            repository_id: repository_id,
+            file_path: file_path,
+            cache_type: cache_type
+          )
+          
+          if record
+            record.update(content: content)
+          else
+            create(
+              repository_id: repository_id,
+              file_path: file_path,
+              cache_type: cache_type,
+              content: content
+            )
+          end
+          Rails.logger.info("Response cached successfully in background")
+        end
+      rescue => e
+        Rails.logger.error("Error in background_cache: #{e.message}")
+      ensure
+        ActiveRecord::Base.connection.close
+      end
     end
     
-    cache_record
+    # Return true to indicate that background caching was initiated
+    true
   end
   
   # Find cached content

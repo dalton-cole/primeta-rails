@@ -5,6 +5,15 @@ export default class extends Controller {
   static targets = ["directory", "dirHeader", "dirContents"];
   static values = { repositoryId: Number };
 
+  // Add debounce utility
+  debounce(func, wait = 100) {
+    let timeout;
+    return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
   connect() {
     console.log("File explorer controller connected");
     
@@ -21,18 +30,20 @@ export default class extends Controller {
     // Initialize all caret rotations
     this.initializeCarets();
     
-    // Set up event listeners for directory headers
+    // Set up event listeners for directory headers with debouncing
     this.dirHeaderTargets.forEach(header => {
-      header.addEventListener("click", (event) => this.toggleDirectory(event));
+      header.addEventListener("click", this.debounce((event) => this.toggleDirectory(event), 50));
     });
     
-    // Listen for custom event to expand directories to a specific file
-    document.addEventListener("expand-to-file", (event) => {
+    // Listen for custom event to expand directories to a specific file - with debouncing
+    this.boundExpandToFile = this.debounce(event => {
       const filePath = event.detail.path;
       if (filePath) {
         this.expandToFile(filePath);
       }
-    });
+    }, 100);
+    
+    document.addEventListener("expand-to-file", this.boundExpandToFile);
     
     // Observe size changes to handle scrolling properly
     this.setupResizeObserver();
@@ -55,13 +66,15 @@ export default class extends Controller {
       const fileExplorer = this.element;
       
       // Create a resize observer to handle content changes
-      this.resizeObserver = new ResizeObserver(entries => {
-        // After content changes, ensure scrollbar reflects new content
+      // Use debounced callback for performance
+      const debouncedResize = this.debounce(() => {
         fileExplorer.style.overflow = 'hidden';
         setTimeout(() => {
           fileExplorer.style.overflow = 'auto';
         }, 0);
-      });
+      }, 150);
+      
+      this.resizeObserver = new ResizeObserver(debouncedResize);
       
       // Start observing the file tree
       const fileTree = fileExplorer.querySelector('.file-tree');
@@ -112,23 +125,27 @@ export default class extends Controller {
     }
   }
   
-  // Helper to update the scroll container after content changes
+  // Helper to update the scroll container after content changes - now debounced
   updateScrollContainer() {
-    const fileExplorer = this.element;
-    if (fileExplorer) {
-      // Force recalculation of scrollable area
-      requestAnimationFrame(() => {
-        // Toggle overflow to recalculate scrollbars
-        const currentOverflow = fileExplorer.style.overflow;
-        fileExplorer.style.overflow = 'hidden';
-        
-        // Force reflow
-        void fileExplorer.offsetHeight;
-        
-        // Restore overflow
-        fileExplorer.style.overflow = currentOverflow || 'auto';
-      });
-    }
+    const debouncedUpdate = this.debounce(() => {
+      const fileExplorer = this.element;
+      if (fileExplorer) {
+        // Force recalculation of scrollable area
+        requestAnimationFrame(() => {
+          // Toggle overflow to recalculate scrollbars
+          const currentOverflow = fileExplorer.style.overflow;
+          fileExplorer.style.overflow = 'hidden';
+          
+          // Force reflow
+          void fileExplorer.offsetHeight;
+          
+          // Restore overflow
+          fileExplorer.style.overflow = currentOverflow || 'auto';
+        });
+      }
+    }, 100);
+    
+    debouncedUpdate();
   }
   
   expandToFile(filePath) {
@@ -167,23 +184,28 @@ export default class extends Controller {
       }
     }
     
-    // After expanding directories, try to highlight the file
+    // After expanding directories, try to highlight the file - optimized with setTimeout
+    this.highlightFile(filePath, expandedAnyDirectory);
+  }
+  
+  // Extracted to a separate method
+  highlightFile(filePath, expandedAnyDirectory) {
     setTimeout(() => {
       const fileLink = this.element.querySelector(`a[data-path="${filePath}"]`);
       if (fileLink) {
         fileLink.classList.add('highlight-file');
         
-        // Scroll the file into view, with a slight delay to ensure expansion is complete
-        setTimeout(() => {
+        // Use requestAnimationFrame for smoother scrolling
+        requestAnimationFrame(() => {
           fileLink.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, expandedAnyDirectory ? 300 : 0);
+        });
         
         // Remove highlight after a delay
         setTimeout(() => {
           fileLink.classList.remove('highlight-file');
         }, 2000);
       }
-    }, 300);
+    }, expandedAnyDirectory ? 300 : 10);
   }
   
   disconnect() {
@@ -192,7 +214,7 @@ export default class extends Controller {
       this.resizeObserver.disconnect();
     }
     
-    // Clean up event listener
-    document.removeEventListener("expand-to-file", this.expandToFile);
+    // Clean up event listener with the same bound function
+    document.removeEventListener("expand-to-file", this.boundExpandToFile);
   }
 } 

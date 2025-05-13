@@ -148,8 +148,8 @@
         
         <!-- Tab navigation -->
         <div class="ai-assistant-tabs">
-          <div class="ai-assistant-tab active" data-tab="context" data-action="click->ai-assistant#switchTab">Context</div>
-          <div class="ai-assistant-tab" data-tab="challenges" data-action="click->ai-assistant#switchTab">Challenges</div>
+          <div class="ai-assistant-tab active" data-tab="context" data-action="click->ai-assistant#switchTab" data-ai-assistant-target="tabLink">Context</div>
+          <div class="ai-assistant-tab" data-tab="challenges" data-action="click->ai-assistant#switchTab" data-ai-assistant-target="tabLink">Challenges</div>
         </div>
         
         <!-- Tab contents -->
@@ -163,7 +163,7 @@
           <div class="ai-error hidden" data-ai-assistant-target="errorMessage"></div>
           
           <!-- Context tab content -->
-          <div class="ai-tab-content active" data-tab="context" data-ai-assistant-target="contextContent"
+          <div class="ai-tab-content active" data-tab="context" data-ai-assistant-target="contextContent" data-ai-assistant-target="tabContent"
                <% if controller_name == 'repositories' && @repository && !@repository_file %>
                data-is-repository-guide="true"
                <% end %>>
@@ -210,7 +210,7 @@
           </div>
           
           <!-- Learning Challenges tab content -->
-          <div class="ai-tab-content" data-tab="challenges" data-ai-assistant-target="challengesContent"
+          <div class="ai-tab-content" data-tab="challenges" data-ai-assistant-target="challengesContent" data-ai-assistant-target="tabContent" data-ai-assistant-target="learningContent"
                <% if controller_name == 'repositories' && @repository && !@repository_file %>
                data-is-repository-guide="true"
                <% end %>>
@@ -249,6 +249,9 @@
               </div>
             <% end %>
           </div>
+
+          <!-- Hidden input field for file path -->
+          <input type="hidden" data-ai-assistant-target="contextFilePath" value="<%= @repository_file&.path %>" />
         </div>
       </div>
     </div>
@@ -342,19 +345,169 @@
         
         // Helper function to format text
         function formatExplanation(text) {
-          // First handle headings
-          let result = text
+          // If no text provided, return empty string to avoid errors
+          if (!text) return '';
+          
+          console.log("TEST MODE - Formatting text, first 100 chars:", text.substring(0, 100));
+          
+          // If text is already wrapped in a markdown code block, extract the content first
+          if (text.startsWith('```markdown') && text.endsWith('```')) {
+            console.log("TEST MODE - Detected markdown wrapper, extracting content");
+            // Extract the actual content from inside the markdown block
+            text = text.substring('```markdown'.length, text.length - 3).trim();
+          }
+          
+          // Process text in steps for more consistent markdown-like formatting
+          
+          // Step 1: Escape HTML in the original text for security
+          let processedText = String(text).replace(/[<>]/g, function(match) {
+            return match === '<' ? '&lt;' : '&gt;';
+          });
+          
+          // Before processing, check if the entire text is a single code block
+          // This handles case where Gemini returns just a code block without markdown wrapper
+          if (processedText.trim().startsWith('```') && processedText.trim().endsWith('```')) {
+            const content = processedText.trim().slice(3, -3).trim();
+            // Check if it has a language specifier
+            const firstLineBreak = content.indexOf('\n');
+            if (firstLineBreak > 0) {
+              const possibleLang = content.substring(0, firstLineBreak).trim();
+              if (/^[a-zA-Z0-9_]+$/.test(possibleLang)) {
+                // It's a language specifier, so format as a code block
+                return `<pre style="background-color: rgba(30, 30, 56, 0.5); padding: 12px; border-radius: 6px; margin: 12px 0; max-width: 100%; overflow-x: auto;"><code style="font-family: monospace; font-size: 13px; color: #f8f8f2; white-space: pre;">${content.substring(firstLineBreak+1).replace(/\n/g, '<br>')}</code></pre>`;
+              }
+            }
+            // No language specifier, just a code block
+            return `<pre style="background-color: rgba(30, 30, 56, 0.5); padding: 12px; border-radius: 6px; margin: 12px 0; max-width: 100%; overflow-x: auto;"><code style="font-family: monospace; font-size: 13px; color: #f8f8f2; white-space: pre;">${content.replace(/\n/g, '<br>')}</code></pre>`;
+          }
+          
+          // Step 2: Capture multi-line code blocks first (```code```)
+          const multiLineCodeBlocks = [];
+          processedText = processedText.replace(/```(?:([a-zA-Z0-9_]+)\n)?([\s\S]*?)```/g, (match, language, code) => {
+            const placeholder = `__MULTI_LINE_CODE_BLOCK_${multiLineCodeBlocks.length}__`;
+            multiLineCodeBlocks.push({ language: language || '', content: code });
+            return placeholder;
+          });
+          
+          // Step 3: Capture inline code blocks (`code`)
+          const inlineCodeBlocks = [];
+          processedText = processedText.replace(/`([^`]*?)`/g, (match, code) => {
+            const placeholder = `__INLINE_CODE_BLOCK_${inlineCodeBlocks.length}__`;
+            inlineCodeBlocks.push(code);
+            return placeholder;
+          });
+          
+          // Step 4: Process headings
+          processedText = processedText
             .replace(/^#{1}\s+(.*?)$/gm, '<h1 style="font-size: 1.5rem; margin: 1rem 0 0.5rem; color: #fff;">$1</h1>')
             .replace(/^#{2}\s+(.*?)$/gm, '<h2 style="font-size: 1.3rem; margin: 1rem 0 0.5rem; color: #fff;">$1</h2>')
             .replace(/^#{3}\s+(.*?)$/gm, '<h3 style="font-size: 1.1rem; margin: 0.8rem 0 0.4rem; color: #fff;">$1</h3>')
             .replace(/^#{4,6}\s+(.*?)$/gm, '<h4 style="font-size: 1rem; margin: 0.7rem 0 0.3rem; color: #fff;">$1</h4>');
+          
+          // Step 5: Process lists
+          // Handle ordered lists
+          let orderedListRegex = /^(\d+\.)\s+(.*?)$/gm;
+          let unorderedListRegex = /^[\-\*]\s+(.*?)$/gm;
+          
+          // Handle ordered lists
+          if (processedText.match(orderedListRegex)) {
+            // First convert list items to HTML
+            processedText = processedText.replace(orderedListRegex, '<li style="margin: 6px 0; padding-left: 4px;">$2</li>');
             
-          // Then handle other markdown formatting  
-          return result
-            .replace(/\n\n/g, '<br><br>')
+            // Then wrap consecutive list items in <ol> tags
+            const lines = processedText.split('\n');
+            let inOrderedList = false;
+            let newLines = [];
+            
+            for (const line of lines) {
+              if (line.startsWith('<li style="margin: 6px 0;')) {
+                if (!inOrderedList) {
+                  newLines.push('<ol style="margin: 12px 0 12px 16px; padding-left: 16px;">');
+                  inOrderedList = true;
+                }
+                newLines.push(line);
+              } else {
+                if (inOrderedList) {
+                  newLines.push('</ol>');
+                  inOrderedList = false;
+                }
+                newLines.push(line);
+              }
+            }
+            
+            // Close any open list
+            if (inOrderedList) {
+              newLines.push('</ol>');
+            }
+            
+            processedText = newLines.join('\n');
+          }
+          
+          // Handle unordered lists
+          if (processedText.match(unorderedListRegex)) {
+            // First convert list items to HTML
+            processedText = processedText.replace(unorderedListRegex, '<li style="margin: 6px 0; padding-left: 4px;">$1</li>');
+            
+            // Then wrap consecutive list items in <ul> tags
+            const lines = processedText.split('\n');
+            let inUnorderedList = false;
+            let newLines = [];
+            
+            for (const line of lines) {
+              if (line.startsWith('<li style="margin: 6px 0;')) {
+                if (!inUnorderedList) {
+                  newLines.push('<ul style="margin: 12px 0 12px 16px; padding-left: 16px; list-style-type: disc;">');
+                  inUnorderedList = true;
+                }
+                newLines.push(line);
+              } else {
+                if (inUnorderedList) {
+                  newLines.push('</ul>');
+                  inUnorderedList = false;
+                }
+                newLines.push(line);
+              }
+            }
+            
+            // Close any open list
+            if (inUnorderedList) {
+              newLines.push('</ul>');
+            }
+            
+            processedText = newLines.join('\n');
+          }
+          
+          // Step 6: Process bold and italic
+          processedText = processedText
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/`(.*?)`/g, '<code style="background-color: rgba(0, 0, 0, 0.2); padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 13px;">$1</code>');
+            .replace(/\*(.*?)\*/g, '<em>$1</em>');
+          
+          // Step 7: Restore inline code blocks
+          inlineCodeBlocks.forEach((code, index) => {
+            processedText = processedText.replace(
+              `__INLINE_CODE_BLOCK_${index}__`, 
+              `<code style="background-color: rgba(30, 30, 56, 0.5); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; color: #f8f8f2;">${code}</code>`
+            );
+          });
+          
+          // Step 8: Restore multi-line code blocks with proper formatting
+          multiLineCodeBlocks.forEach((codeObj, index) => {
+            // Add proper class for syntax highlighting based on the language if specified
+            const languageClass = codeObj.language ? ` language-${codeObj.language.toLowerCase()}` : '';
+            
+            // Ensure the content is properly displayed with line breaks
+            const formattedCode = codeObj.content.replace(/\n/g, '<br>');
+            
+            processedText = processedText.replace(
+              `__MULTI_LINE_CODE_BLOCK_${index}__`, 
+              `<pre style="background-color: rgba(30, 30, 56, 0.8); border-radius: 6px; margin: 16px 0; padding: 12px 16px; border: 1px solid rgba(99, 102, 241, 0.2); overflow-x: auto;"><code style="display: block; font-family: monospace; line-height: 1.6; font-size: 0.9em; color: #f8f8f2; white-space: pre-wrap; word-break: break-word;">${formattedCode}</code></pre>`
+            );
+          });
+          
+          // Step 9: Process paragraphs (convert double line breaks to paragraph breaks)
+          processedText = processedText.replace(/\n\n/g, '<br><br>');
+          
+          return processedText;
         }
       }
       
@@ -614,6 +767,13 @@
           .hidden {
             display: none !important;
             visibility: hidden !important;
+          }
+          
+          /* Ordered list styling */
+          .ai-ordered-list {
+            margin: 12px 0 12px 16px;
+            padding-left: 16px;
+            list-style-type: decimal;
           }
         `;
         document.head.appendChild(style);

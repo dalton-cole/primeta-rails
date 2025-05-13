@@ -1,6 +1,7 @@
 class FileView < ApplicationRecord
   belongs_to :user
   belongs_to :repository_file
+  belongs_to :repository, optional: true
   
   # Validations
   validates :view_count, numericality: { greater_than_or_equal_to: 0 }
@@ -8,6 +9,7 @@ class FileView < ApplicationRecord
   
   # Callbacks
   before_create :set_initial_values
+  after_commit :broadcast_progress_update, on: [:create, :update]
   
   # Instance Methods
   def record_view(time_spent = nil)
@@ -41,10 +43,39 @@ class FileView < ApplicationRecord
     end
   end
   
+  # Broadcasts the file view update to relevant Turbo Streams
+  def broadcast_file_status_update
+    # Get the repository file's repository
+    repo = repository_file.repository
+    
+    # Update the file status in the UI
+    Turbo::StreamsChannel.broadcast_replace_to(
+      "repository_#{repo.id}",
+      target: "file_#{repository_file.id}_status",
+      partial: "repositories/key_file_item",
+      locals: { file: repository_file, viewed: true }
+    )
+  end
+  
   private
   
   def set_initial_values
     self.view_count ||= 0
     self.last_viewed_at ||= Time.current
+    # Ensure repository is set properly
+    self.repository ||= repository_file&.repository
+  end
+  
+  def broadcast_progress_update
+    return unless repository_file&.repository.present?
+    
+    # Get the repository
+    repo = repository_file.repository
+    
+    # Create a progress tracking service
+    progress_service = ProgressTrackingService.new(repo, user)
+    
+    # Broadcast the updated progress to appropriate channels
+    progress_service.broadcast_progress_update
   end
 end

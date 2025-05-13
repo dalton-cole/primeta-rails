@@ -115,33 +115,55 @@ export default class extends Controller {
         }
       }));
       
-      // Remove highlight from previously selected file and add to current
-      document.querySelectorAll('.file-item a.current-file').forEach(el => {
+      // First, clean up any previously selected items
+      document.querySelectorAll('.current-file').forEach(el => {
         el.classList.remove('current-file');
       });
       
-      // If it's a traditional file link in the file tree
-      if (fileLink.tagName === 'A') {
-      fileLink.classList.add('current-file');
-      fileLink.classList.add('viewed-file'); // Also mark as viewed
+      document.querySelectorAll('.selected-file-item').forEach(el => {
+        el.classList.remove('selected-file-item');
+      });
+      
+      document.querySelectorAll('.selected-key-file').forEach(el => {
+        el.classList.remove('selected-key-file');
+      });
+      
+      // If it's a file in the file tree, mark it and its parent
+      if (fileLink.tagName === 'A' && fileLink.closest('.file-item')) {
+        fileLink.classList.add('current-file');
+        fileLink.classList.add('viewed-file');
+        
+        const fileItem = fileLink.closest('.file-item');
+        if (fileItem) {
+          fileItem.classList.add('selected-file-item');
+        }
       }
       
-      // Handle key file items (both in key files tab and in concept files)
-      const keyFileItems = document.querySelectorAll(`.key-file-item[data-file-id="${fileId}"]`);
-      keyFileItems.forEach(item => {
-        item.classList.add('viewed');
-        
-        // If this element has a Turbo frame, request an update to show viewed status
-        if (item.dataset.turboFrame) {
-          // Send a Turbo Stream update to mark this file as viewed
-          fetch(`/repository_files/${fileId}/mark_viewed`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'text/vnd.turbo-stream.html',
-              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
-            }
-          });
+      // Also mark any other links with the same file ID 
+      document.querySelectorAll(`a[data-file-id="${fileId}"]`).forEach(el => {
+        if (el !== fileLink) { // Skip the one we already processed
+          el.classList.add('viewed-file');
+        }
+      });
+      
+      // Handle key file items
+      document.querySelectorAll(`.key-file-item[data-file-id="${fileId}"]`).forEach(item => {
+        if (item) {
+          item.classList.add('viewed');
+          item.classList.add('selected-key-file');
+          
+          // If this element has a Turbo frame, request an update to show viewed status
+          if (item.dataset && item.dataset.turboFrame) {
+            // Send a Turbo Stream update to mark this file as viewed
+            fetch(`/repository_files/${fileId}/mark_viewed`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'text/vnd.turbo-stream.html',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+              }
+            });
+          }
         }
       });
       
@@ -157,17 +179,14 @@ export default class extends Controller {
         }
       }
       
-      // Safer scroll method - manually adjust scroll position without using scrollIntoView
+      // Scroll the file into view (with debouncing)
       setTimeout(() => {
         const fileTree = document.querySelector('.file-tree');
-        if (fileTree) {
+        if (fileTree && fileLink) {
           const fileLinkRect = fileLink.getBoundingClientRect();
           const fileTreeRect = fileTree.getBoundingClientRect();
           
-          // Check if the file link is outside the visible area of the file tree
           if (fileLinkRect.top < fileTreeRect.top || fileLinkRect.bottom > fileTreeRect.bottom) {
-            // Calculate how much to scroll to get the file link in view
-            // We'll position it about 30% down from the top of the visible area
             const scrollTarget = fileLinkRect.top + fileTree.scrollTop - fileTreeRect.top - (fileTreeRect.height * 0.3);
             fileTree.scrollTo({
               top: scrollTarget,
@@ -201,13 +220,19 @@ export default class extends Controller {
       // Add header elements with file info
       this.ensureHeaderElements();
       
-      // Set file info
+      // Set file info with safe null checking
       if (this.hasFileTitleTarget) {
-        this.fileTitleTarget.textContent = this.currentFilePath.split('/').pop();
+        try {
+          // Use optional chaining for safer access
+          this.fileTitleTarget.textContent = (this.currentFilePath?.split('/') || fileData.path?.split('/') || [`File ${fileId}`]).pop();
+        } catch (e) {
+          console.warn("Error setting file title:", e);
+          this.fileTitleTarget.textContent = `File ${fileId}`;
+        }
       }
       
       if (this.hasFilePathTarget) {
-        this.filePathTarget.textContent = this.currentFilePath;
+        this.filePathTarget.textContent = this.currentFilePath || fileData.path || `File ID: ${fileId}`;
       }
       
       // Update stats if available
@@ -246,7 +271,6 @@ export default class extends Controller {
   ensureHeaderElements() {
     if (!this.hasEditorContainerTarget) return;
     
-    // Always rebuild the interface to ensure consistent structure
     console.log("Building editor interface elements");
     
     // Clear the container first
@@ -266,12 +290,12 @@ export default class extends Controller {
         </div>
       </div>
       <div id="monaco-container" style="flex: 1 1 auto; min-height: 0; height: auto;"></div>
-      <div class="file-footer" style="flex-shrink: 0; margin-top: 10px;">
-        <div class="file-path">
-          <span class="file-icon">📄</span>
-          <span data-inline-editor-target="filePath" class="file-path-container"></span>
+      <div class="file-footer" style="flex-shrink: 0; margin-top: 10px; width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <div class="file-path" style="display: flex; align-items: center;">
+          <span class="file-icon" style="margin-right: 5px;">📄</span>
+          <span data-inline-editor-target="filePath" class="file-path-container" style="word-break: break-all;"></span>
         </div>
-        <div data-inline-editor-target="fileStats" class="file-stats"></div>
+        <div data-inline-editor-target="fileStats" class="file-stats" style="display: flex; gap: 15px;"></div>
       </div>
     `;
     
@@ -315,8 +339,33 @@ export default class extends Controller {
   }
   
   loadMonaco(content, language) {
-    console.log("Loading Monaco from CDN");
-    // Add Monaco loader script
+    console.log("Loading Monaco using global loader");
+    
+    // Add loading indicator
+    this.editorContainerTarget.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; color: #ccc;">
+        <div style="text-align: center; margin-bottom: 15px;">Loading editor...</div>
+        <div style="width: 40px; height: 40px; border: 3px solid rgba(99, 102, 241, 0.1); border-top-color: #6366F1; border-radius: 50%; animation: spin 1s infinite linear;"></div>
+        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+      </div>
+    `;
+    
+    // If global loader exists, use it
+    if (typeof window.loadMonacoEditor === 'function') {
+      window.loadMonacoEditor(() => {
+        console.log("Monaco loaded via global loader");
+        if (window.monaco) {
+          this.createEditor(content, language);
+        } else {
+          console.error("Monaco still not available after global load");
+          this.editorContainerTarget.innerHTML = `<div class="error">Failed to load Monaco editor. Please refresh the page.</div>`;
+        }
+      });
+      return;
+    }
+    
+    // Fallback to direct loading if global function is not available
+    console.log("Global loader not found, using direct loader");
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.40.0/min/vs/loader.js';
     script.async = true;

@@ -76,7 +76,8 @@ class RepositoryFilesController < ApplicationController
         user: current_user,
         repository_file: @repository_file,
         repository: @repository_file.repository,
-        view_duration: 1 # Minimal duration just to mark as viewed
+        view_count: 1,
+        last_viewed_at: Time.current
       )
     end
     

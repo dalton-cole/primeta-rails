@@ -1,0 +1,58 @@
+<%
+# Notification partial for broadcasting status messages via Turbo Streams
+# Supports:
+# - message: The main text to display
+# - type: The type of notification (info, success, warning, error)
+# - duration: How long to display the notification (in ms, defaults to 5000)
+# - id: Optional unique identifier for the notification
+
+# Set defaults
+type ||= 'info'
+duration ||= 5000
+id ||= "notification_#{SecureRandom.hex(6)}"
+
+# Map type to appropriate styling
+style_class = case type.to_s
+when 'success' then 'bg-green-100 border-green-400 text-green-800'
+when 'error' then 'bg-red-100 border-red-400 text-red-800'
+when 'warning' then 'bg-yellow-100 border-yellow-400 text-yellow-800'
+else 'bg-blue-100 border-blue-400 text-blue-800' # info style
+end
+
+icon_class = case type.to_s
+when 'success' then 'fa-check-circle text-green-500'
+when 'error' then 'fa-exclamation-circle text-red-500'
+when 'warning' then 'fa-exclamation-triangle text-yellow-500'
+else 'fa-info-circle text-blue-500' # info style
+end
+%>
+
+<div id="<%= id %>" 
+     class="notification-toast <%= style_class %> border-l-4 p-4 rounded shadow-md flex items-center transition-all duration-300 ease-in-out"
+     data-controller="notification"
+     data-notification-duration-value="<%= duration %>"
+     data-notification-id-value="<%= id %>">
+  <div class="flex-shrink-0 mr-3">
+    <i class="fas <%= icon_class %>"></i>
+  </div>
+  <div class="flex-grow">
+    <div class="font-medium"><%= message %></div>
+  </div>
+  <div class="flex-shrink-0 ml-3">
+    <button data-action="notification#dismiss" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+</div>
+
+<% if duration.to_i > 0 %>
+<script>
+  setTimeout(() => {
+    const notification = document.getElementById('<%= id %>');
+    if (notification) {
+      notification.classList.add('opacity-0');
+      setTimeout(() => notification.remove(), 300);
+    }
+  }, <%= duration %>);
+</script>
+<% end %> 
