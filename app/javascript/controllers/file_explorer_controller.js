@@ -84,39 +84,61 @@ export default class extends Controller {
     }
   }
   
-  toggleDirectory(event) {
-    event.preventDefault();
-    event.stopPropagation();
+  // Toggle the visibility of a directory's contents and fetch them if necessary
+  async toggleDirectory(event) { // Make async to allow await
+    const directoryLabel = event.currentTarget;
+    const directoryDiv = directoryLabel.closest('.directory');
+    
+    // Correctly mimic Rails' path.parameterize(separator: '_') for typical file paths
+    let pathForId = directoryDiv.dataset.path;
+    let idPart = pathForId
+      .replace(/[\/\.]/g, '_') // Replace / and . with _
+      .toLowerCase()
+      .replace(/[^a-z0-9_]+/g, '') // Remove other non-alphanumeric (keeps existing underscores)
+      .replace(/__+/g, '_'); // Squeeze multiple underscores
+    const frameId = `dir_${idPart}`;
 
-    const header = event.currentTarget;
-    const directory = header.closest(".directory");
-    if (!directory) return;
+    const frame = directoryDiv.querySelector(`turbo-frame#${frameId}`);
+    const icon = directoryLabel.querySelector('i.fas.fa-caret-right, i.fas.fa-caret-down');
+    const folderIcon = directoryLabel.querySelector('i.fas.fa-folder, i.fas.fa-folder-open');
 
-    const isExpanded = !directory.classList.contains("expanded");
-    directory.classList.toggle("expanded", isExpanded);
-    header.classList.toggle("expanded", isExpanded);
+    if (!directoryDiv || !frame || !icon) {
+      console.error("Could not find necessary elements for directory toggle.", { directoryDiv, frame, icon });
+      return;
+    }
 
-    // Only load children if expanding
-    if (isExpanded) {
-      const repoId = this.repositoryIdValue;
-      const dirPath = directory.dataset.path;
-      const frameId = `dir_${dirPath.replaceAll('/', '_')}`;
-      const frame = document.getElementById(frameId);
-      
-      // Get the current level from the directory's data-level attribute
-      const currentLevel = parseInt(directory.dataset.level, 10);
-      const childLevel = currentLevel + 1;
+    const isCurrentlyExpanded = frame.hasAttribute("src") || frame.innerHTML.trim() !== '';
 
-      if (frame && !frame.src) {
-        frame.src = `/repositories/${repoId}/tree?path=${encodeURIComponent(dirPath)}&level=${childLevel}`;
+    if (isCurrentlyExpanded) {
+      // Collapse: Clear src to prevent re-fetch, clear content, update icon
+      console.log(`FILE_EXPLORER: Collapsing directory '${directoryDiv.dataset.path}'`);
+      frame.removeAttribute("src");
+      frame.innerHTML = ''; // Clear content immediately
+      icon.classList.remove('fa-caret-down');
+      icon.classList.add('fa-caret-right');
+      if (folderIcon) {
+        folderIcon.classList.remove('fa-folder-open');
+        folderIcon.classList.add('fa-folder');
       }
+      directoryDiv.classList.remove('expanded');
+    } else {
+      // Expand: Set src to fetch content, update icon
+      const path = directoryDiv.dataset.path;
+      const currentLevel = parseInt(directoryDiv.dataset.level, 10);
+      const newLevel = currentLevel + 1; // Level for the children to be loaded
+      console.log(`FILE_EXPLORER: Expanding directory '${path}', setting frame.src to fetch level ${newLevel}`);
+      frame.src = `/repositories/${this.repositoryIdValue}/tree?path=${encodeURIComponent(path)}&level=${newLevel}`;
+      icon.classList.remove('fa-caret-right');
+      icon.classList.add('fa-caret-down');
+      if (folderIcon) {
+        folderIcon.classList.remove('fa-folder');
+        folderIcon.classList.add('fa-folder-open');
+      }
+      directoryDiv.classList.add('expanded');
     }
-
-    // Update caret icon
-    const caretIcon = header.querySelector('.fa-caret-right');
-    if (caretIcon) {
-      void caretIcon.offsetWidth;
-    }
+    console.log("FILE_EXPLORER: toggleDirectory finished processing, adding small delay.");
+    await new Promise(resolve => setTimeout(resolve, 150)); // Add a slightly longer delay
+    console.log("FILE_EXPLORER: Delay after toggleDirectory finished.");
   }
   
   // Helper to update the scroll container after content changes - now debounced
@@ -184,22 +206,17 @@ export default class extends Controller {
   
   // Extracted to a separate method
   highlightFile(filePath, expandedAnyDirectory) {
-    setTimeout(() => {
-      const fileLink = this.element.querySelector(`a[data-path="${filePath}"]`);
-      if (fileLink) {
-        fileLink.classList.add('highlight-file');
-        
-        // Use requestAnimationFrame for smoother scrolling
-        requestAnimationFrame(() => {
-          fileLink.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        });
-        
-        // Remove highlight after a delay
-        setTimeout(() => {
+    const fileLink = this.element.querySelector(`a[data-path="${filePath}"]`);
+    if (fileLink) {
+      fileLink.classList.add('highlight-file');
+      console.log("FILE_EXPLORER: File link found (synchronous), added highlight. Scroll still commented.", fileLink);
+      
+      setTimeout(() => {
+        if (fileLink) {
           fileLink.classList.remove('highlight-file');
-        }, 2000);
-      }
-    }, expandedAnyDirectory ? 300 : 10);
+        }
+      }, 2000);
+    }
   }
   
   disconnect() {

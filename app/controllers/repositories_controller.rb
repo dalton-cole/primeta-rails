@@ -8,7 +8,11 @@ class RepositoriesController < ApplicationController
   end
 
   def show
-    @key_concepts = @repository.key_concepts.order(:name)
+    @key_concepts = @repository.key_concepts.includes(:repository_files).order(:name)
+    
+    # Pre-fetch RepositoryFile objects for all key files in the concepts
+    all_key_file_paths = @key_concepts.flat_map { |c| c.key_files.presence || [] }.uniq
+    @key_files_map = @repository.repository_files.where(path: all_key_file_paths).index_by(&:path)
     
     # Use the ProgressTrackingService for calculating progress
     progress_service = ProgressTrackingService.new(@repository, current_user)
@@ -252,49 +256,41 @@ class RepositoriesController < ApplicationController
 
   # Build a nested hash representing one level of the directory structure
   def build_level_specific_directory_structure(repository, base_path)
-    cache_key = "repository/#{repository.id}/tree_level/#{Digest::MD5.hexdigest(base_path)}" # Hash base_path if it can be very long
+    cache_key = "repository/#{repository.id}/tree_level/#{Digest::MD5.hexdigest(base_path)}" # Reverted cache key (removed /v2)
     Rails.cache.fetch(cache_key, expires_in: 1.hour) do
       structure = {}
       current_path_prefix = base_path.blank? ? "" : "#{base_path}/"
-      # depth = base_path.blank? ? 1 : base_path.count('/') + 2 # Not actively used, can remove if confirmed
-
-      # Fetch all paths that start with the current_path_prefix
-      paths_under_prefix = repository.repository_files
-                                  .where("path LIKE ?", "#{current_path_prefix}%")
-                                  .pluck(:path)
-
-      direct_children_names = Set.new
-      paths_under_prefix.each do |full_path|
-        relative_path = full_path.sub(current_path_prefix, '')
-        next if relative_path.blank?
-
-        first_part = relative_path.split('/').first
-        direct_children_names.add(first_part) if first_part.present?
+      descendant_file_tuples = repository.repository_files
+                                        .where("path LIKE ?", "#{current_path_prefix}%")
+                                        .pluck(:id, :path, :is_key_file)
+      child_info = {}
+      descendant_file_tuples.each do |id, path_str, is_key_file_val|
+        relative_path_from_prefix = path_str.sub(current_path_prefix, '')
+        next if relative_path_from_prefix.blank?
+        child_name = relative_path_from_prefix.split('/').first
+        next if child_name.blank?
+        child_info[child_name] ||= { is_dir: false, file_tuple: nil }
+        if relative_path_from_prefix.include?('/')
+          child_info[child_name][:is_dir] = true
+          child_info[child_name][:file_tuple] = nil
+        elsif !child_info[child_name][:is_dir]
+          child_info[child_name][:file_tuple] = [id, path_str, is_key_file_val]
+        end
       end
-
-      potential_file_paths = direct_children_names.map { |name| current_path_prefix + name }
-      
-      child_files_map = repository.repository_files
-                                  .where(path: potential_file_paths)
-                                  # .includes(:file_views) # Careful with caching complex objects; file_views might not be needed here
-                                  .select(:id, :path, :is_key_file) # Select only necessary attributes for caching
-                                  .index_by(&:path)
-
-      direct_children_names.sort.each do |name|
-        full_child_path = current_path_prefix + name
-        is_directory = paths_under_prefix.any? { |p| p.start_with?("#{full_child_path}/") }
-
-        if is_directory
-          structure[name] = { type: :directory, path: full_child_path } 
-        elsif (file_record = child_files_map[full_child_path])
+      child_info.keys.sort.each do |name|
+        info = child_info[name]
+        full_child_path_for_entry = current_path_prefix + name
+        if info[:is_dir]
+          structure[name] = { type: :directory, path: full_child_path_for_entry }
+        elsif (file_tuple = info[:file_tuple])
           structure[name] = {
             type: :file,
-            id: file_record.id,
-            path: file_record.path,
-            is_key_file: file_record.is_key_file || false
+            id: file_tuple[0],
+            path: file_tuple[1],
+            is_key_file: file_tuple[2] || false
           }
         else
-          Rails.logger.warn "Could not fully resolve child: #{name} under #{current_path_prefix} during cache population for key #{cache_key}"
+          Rails.logger.warn "Could not fully resolve child: #{name} under #{current_path_prefix} during cache population for key #{cache_key}. Info: #{info.inspect}"
         end
       end
       structure

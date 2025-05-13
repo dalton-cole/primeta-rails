@@ -18,28 +18,28 @@ export default class extends Controller {
     if (!this.hasEditorContainerTarget) {
       console.error("Missing editorContainer target");
     } else {
-      console.log("editorContainer found:", this.editorContainerTarget);
+      // console.log("editorContainer found:", this.editorContainerTarget);
     }
     
     // Log all targets for debugging
-    console.log("Targets found:", {
-      infoPanel: this.hasInfoPanelTarget,
-      editorContainer: this.hasEditorContainerTarget,
-      fileTitle: this.hasFileTitleTarget,
-      fileStats: this.hasFileStatsTarget,
-      filePath: this.hasFilePathTarget
-    });
+    // console.log("Targets found:", {
+    //   infoPanel: this.hasInfoPanelTarget,
+    //   editorContainer: this.hasEditorContainerTarget,
+    //   fileTitle: this.hasFileTitleTarget,
+    //   fileStats: this.hasFileStatsTarget,
+    //   filePath: this.hasFilePathTarget
+    // });
     
     // Check for Monaco
     if (window.monaco) {
-      console.log("Monaco is already available on page load");
+      // console.log("Monaco is already available on page load");
     } else {
-      console.log("Monaco is not available on page load");
+      // console.log("Monaco is not available on page load");
     }
     
     // Check repositories controller values
     if (this.hasRepositoryIdValue) {
-      console.log("Repository ID:", this.repositoryIdValue);
+      // console.log("Repository ID:", this.repositoryIdValue);
     } else {
       console.warn("No repository ID value found");
     }
@@ -83,13 +83,13 @@ export default class extends Controller {
   // Show the Monaco editor and load file content
   async showFile(event) {
     event.preventDefault();
-    console.log("showFile method called");
+    // console.log("showFile method called");
     
     const fileLink = event.currentTarget;
     const fileId = fileLink.dataset.fileId;
     const filePath = fileLink.dataset.path || fileLink.textContent.trim();
     
-    console.log("File selected:", { fileId, filePath });
+    // console.log("File selected:", { fileId, filePath });
     
     if (!fileId) {
       console.error("No fileId found in the clicked element");
@@ -102,178 +102,133 @@ export default class extends Controller {
         this.recordTimeSpent();
       }
       
-      // Update current file ID and path
       this.currentFileId = fileId;
       this.currentFilePath = filePath;
       
-      // Dispatch a custom event for the AI assistant to respond to
+      // Dispatch AI assistant event
       document.dispatchEvent(new CustomEvent('monaco:file-selected', {
-        detail: {
-          fileId: fileId,
-          filePath: filePath,
-          repositoryId: this.repositoryIdValue
-        }
+        detail: { fileId, filePath, repositoryId: this.repositoryIdValue }
       }));
       
-      // First, clean up any previously selected items
-      document.querySelectorAll('.current-file').forEach(el => {
-        el.classList.remove('current-file');
-      });
+      // Update UI for selected file link
+      this.updateSelectedFileLinkUI(fileLink, fileId);
       
-      document.querySelectorAll('.selected-file-item').forEach(el => {
-        el.classList.remove('selected-file-item');
-      });
-      
-      document.querySelectorAll('.selected-key-file').forEach(el => {
-        el.classList.remove('selected-key-file');
-      });
-      
-      // If it's a file in the file tree, mark it and its parent
-      if (fileLink.tagName === 'A' && fileLink.closest('.file-item')) {
-        fileLink.classList.add('current-file');
-        fileLink.classList.add('viewed-file');
-        
-        const fileItem = fileLink.closest('.file-item');
-        if (fileItem) {
-          fileItem.classList.add('selected-file-item');
-        }
-      }
-      
-      // Also mark any other links with the same file ID 
-      document.querySelectorAll(`a[data-file-id="${fileId}"]`).forEach(el => {
-        if (el !== fileLink) { // Skip the one we already processed
-          el.classList.add('viewed-file');
-        }
-      });
-      
-      // Handle key file items
-      document.querySelectorAll(`.key-file-item[data-file-id="${fileId}"]`).forEach(item => {
-        if (item) {
-          item.classList.add('viewed');
-          item.classList.add('selected-key-file');
-          
-          // If this element has a Turbo frame, request an update to show viewed status
-          if (item.dataset && item.dataset.turboFrame) {
-            // Send a Turbo Stream update to mark this file as viewed
-            fetch(`/repository_files/${fileId}/mark_viewed`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'text/vnd.turbo-stream.html',
-                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
-              }
-            });
-          }
-        }
-      });
-      
-      // Expand all parent directories of the selected file
-      let parentElement = fileLink.closest('.dir-contents');
-      while (parentElement) {
-        const dirItem = parentElement.closest('.dir-item');
-        if (dirItem) {
-          dirItem.classList.add('expanded');
-          parentElement = dirItem.parentElement.closest('.dir-contents');
-        } else {
-          break;
-        }
-      }
-      
-      // Scroll the file into view (with debouncing)
-      setTimeout(() => {
-        const fileTree = document.querySelector('.file-tree');
-        if (fileTree && fileLink) {
-          const fileLinkRect = fileLink.getBoundingClientRect();
-          const fileTreeRect = fileTree.getBoundingClientRect();
-          
-          if (fileLinkRect.top < fileTreeRect.top || fileLinkRect.bottom > fileTreeRect.bottom) {
-            const scrollTarget = fileLinkRect.top + fileTree.scrollTop - fileTreeRect.top - (fileTreeRect.height * 0.3);
-            fileTree.scrollTo({
-              top: scrollTarget,
-              behavior: 'smooth'
-            });
-          }
-        }
-      }, 100);
-      
-      // Check if targets exist
-      if (!this.hasInfoPanelTarget || !this.hasEditorContainerTarget) {
-        console.error("Missing required targets: infoPanel or editorContainer");
-        return;
-      }
-      
-      // Hide info panel
-      this.infoPanelTarget.style.display = 'none';
-      
-      // Make editor container visible
+      // Ensure editor chrome structure exists *before* showing loading state
+      this.ensureHeaderElements(); 
+
+      // Show editor, hide info panel
+      this.infoPanelTarget.classList.add('hidden');
+      this.editorContainerTarget.classList.remove('hidden');
       this.editorContainerTarget.style.display = 'flex';
-      this.editorContainerTarget.innerHTML = '<div class="loading">Loading file...</div>';
-      
+
+      // Show loading state within #monaco-container if it exists
+      const monacoContainer = this.editorContainerTarget.querySelector('#monaco-container');
+      if (monacoContainer) {
+        monacoContainer.innerHTML = '<div class="loading" style="display: flex; justify-content: center; align-items: center; height: 100%;">Loading file...</div>';
+      } else {
+        // Fallback if monaco-container isn't there (shouldn't happen if ensureHeaderElements ran)
+        this.editorContainerTarget.innerHTML = '<div class="loading">Loading file...</div>'; 
+      }
+      // Clear previous file title/path/stats from header/footer
+      if (this.hasFileTitleTarget) this.fileTitleTarget.textContent = 'Loading...';
+      if (this.hasFilePathTarget) this.filePathTarget.textContent = '...';
+      if (this.hasFileStatsTarget) this.fileStatsTarget.innerHTML = '';
+
       console.log("Loading file content for ID:", fileId);
-      
-      // Fetch file content
       const response = await fetch(`/repository_files/${fileId}/content`);
       if (!response.ok) throw new Error('Failed to load file content');
-      
       const fileData = await response.json();
       
-      // Add header elements with file info
-      this.ensureHeaderElements();
-      
-      // Set file info with safe null checking
+      // ensureHeaderElements() was already called, so chrome should be stable.
+      // Update header/footer with actual file info
       if (this.hasFileTitleTarget) {
-        try {
-          // Use optional chaining for safer access
-          this.fileTitleTarget.textContent = (this.currentFilePath?.split('/') || fileData.path?.split('/') || [`File ${fileId}`]).pop();
-        } catch (e) {
-          console.warn("Error setting file title:", e);
-          this.fileTitleTarget.textContent = `File ${fileId}`;
-        }
+        this.fileTitleTarget.textContent = (this.currentFilePath?.split('/') || fileData.path?.split('/') || [`File ${fileId}`]).pop();
       }
-      
       if (this.hasFilePathTarget) {
         this.filePathTarget.textContent = this.currentFilePath || fileData.path || `File ID: ${fileId}`;
       }
-      
-      // Update stats if available
       if (this.hasFileStatsTarget && fileData.file_view) {
         this.updateFileStats(fileData.file_view);
       }
       
-      // Record start time for this file view
       this.startTime = new Date();
-      
-      // Initialize Monaco editor
       this.initializeEditor(fileData.content, fileData.language);
-      
       console.log("File display complete");
       
     } catch (error) {
       console.error("Error displaying file:", error);
-      
-      // Show error message
       if (this.hasEditorContainerTarget) {
-        this.editorContainerTarget.innerHTML = `
-          <div class="error-box">
-            <div class="error-icon"><i class="fas fa-exclamation-triangle"></i></div>
-            <div class="error-message">
-              <h3>Error Loading File</h3>
-              <p>${error.message}</p>
-              <button class="btn btn-outline" onclick="window.location.reload()">Refresh Page</button>
-            </div>
+        this.editorContainerTarget.innerHTML = `<div class="error-box">
+          <div class="error-icon"><i class="fas fa-exclamation-triangle"></i></div>
+          <div class="error-message">
+            <h3>Error Loading File</h3>
+            <p>${error.message}</p>
+            <button class="btn btn-outline" onclick="window.location.reload()">Refresh Page</button>
           </div>
-        `;
+        </div>`;
       }
     }
+  }
+  
+  // updateSelectedFileLinkUI (Helper function extracted from showFile)
+  updateSelectedFileLinkUI(fileLink, fileId) {
+    document.querySelectorAll('.current-file').forEach(el => el.classList.remove('current-file'));
+    document.querySelectorAll('.selected-file-item').forEach(el => el.classList.remove('selected-file-item'));
+    document.querySelectorAll('.selected-key-file').forEach(el => el.classList.remove('.selected-key-file'));
+
+    if (fileLink.tagName === 'A' && fileLink.closest('.file-item')) {
+      fileLink.classList.add('current-file', 'viewed-file');
+      const fileItem = fileLink.closest('.file-item');
+      if (fileItem) fileItem.classList.add('selected-file-item');
+    }
+
+    document.querySelectorAll(`a[data-file-id="${fileId}"]`).forEach(el => {
+      if (el !== fileLink) el.classList.add('viewed-file');
+    });
+
+    document.querySelectorAll(`.key-file-item[data-file-id="${fileId}"]`).forEach(item => {
+      item.classList.add('viewed', 'selected-key-file');
+      if (item.dataset && item.dataset.turboFrame) {
+        fetch(`/repository_files/${fileId}/mark_viewed`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'text/vnd.turbo-stream.html',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+          }
+        });
+      }
+    });
+    // Removed directory expansion and scrollIntoView from here, should be handled by file_explorer_controller
   }
   
   // Ensure editor header elements exist
   ensureHeaderElements() {
     if (!this.hasEditorContainerTarget) return;
     
-    console.log("Building editor interface elements");
-    
-    // Clear the container first
+    const existingHeader = this.editorContainerTarget.querySelector('.editor-header');
+    const existingMonacoContainer = this.editorContainerTarget.querySelector('#monaco-container');
+    const existingFooter = this.editorContainerTarget.querySelector('.file-footer');
+
+    // console.log("INLINE_EDITOR: ensureHeaderElements check:", 
+    //   { 
+    //     hasEditorContainerTarget: this.hasEditorContainerTarget,
+    //     editorContainerTargetChildren: this.editorContainerTarget.children.length,
+    //     existingHeader: !!existingHeader, 
+    //     existingMonacoContainer: !!existingMonacoContainer, 
+    //     existingFooter: !!existingFooter 
+    //   }
+    // );
+
+    if (existingHeader && existingMonacoContainer && existingFooter) {
+      // console.log("INLINE_EDITOR: Editor chrome elements already exist. Skipping rebuild.");
+      // console.log("Building editor interface elements");
+      return; 
+    }
+
+    // console.log("INLINE_EDITOR: Rebuilding editor chrome elements because one was missing.");
+    // console.log("Building editor interface elements");
+    // Clear the container first only if we are rebuilding
     this.editorContainerTarget.innerHTML = '';
     
     // Build header structure with improved layout
@@ -300,25 +255,16 @@ export default class extends Controller {
     `;
     
     // Add to DOM
-    this.editorContainerTarget.innerHTML = editorHtml;
-    
-    // Force Stimulus to reconnect to the new elements
-    if (this.application) {
-      this.application.controllers.forEach(controller => {
-        if (controller.context.identifier === 'inline-editor') {
-          controller.connect();
-        }
-      });
-    }
+    this.editorContainerTarget.innerHTML = editorHtml; // This is fine now as we cleared above only if rebuilding.
   }
   
   // Initialize or update the Monaco editor
   initializeEditor(content, language) {
-    console.log("Initializing editor with language:", language);
+    // console.log("Initializing editor with language:", language);
     
     // First dispose of any existing editor
     if (this.editor) {
-      console.log("Disposing existing editor");
+      // console.log("Disposing existing editor");
       this.editor.dispose();
       this.editor = null;
     }
@@ -339,7 +285,7 @@ export default class extends Controller {
   }
   
   loadMonaco(content, language) {
-    console.log("Loading Monaco using global loader");
+    // console.log("Loading Monaco using global loader");
     
     // Add loading indicator
     this.editorContainerTarget.innerHTML = `
@@ -353,7 +299,7 @@ export default class extends Controller {
     // If global loader exists, use it
     if (typeof window.loadMonacoEditor === 'function') {
       window.loadMonacoEditor(() => {
-        console.log("Monaco loaded via global loader");
+        // console.log("Monaco loaded via global loader");
         if (window.monaco) {
           this.createEditor(content, language);
         } else {
@@ -365,7 +311,7 @@ export default class extends Controller {
     }
     
     // Fallback to direct loading if global function is not available
-    console.log("Global loader not found, using direct loader");
+    // console.log("Global loader not found, using direct loader");
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.40.0/min/vs/loader.js';
     script.async = true;
@@ -375,7 +321,7 @@ export default class extends Controller {
       });
       
       window.require(['vs/editor/editor.main'], () => {
-        console.log("Monaco loaded from CDN");
+        // console.log("Monaco loaded from CDN");
         // Ensure our theme is defined after Monaco loads but before editor creation
         if (typeof window.applyPrimetaTheme === 'function') {
           window.applyPrimetaTheme();
@@ -393,19 +339,18 @@ export default class extends Controller {
       return;
     }
     
-    // Find or create a container for Monaco
-    let monacoContainer = this.editorContainerTarget.querySelector('#monaco-container');
+    const monacoContainer = this.editorContainerTarget.querySelector('#monaco-container');
     if (!monacoContainer) {
-      console.log("Creating new Monaco container");
-      monacoContainer = document.createElement('div');
-      monacoContainer.id = 'monaco-container';
-      
-      // Clear editor container and add the Monaco container
-      this.editorContainerTarget.innerHTML = '';
-      this.editorContainerTarget.appendChild(monacoContainer);
+      console.error("#monaco-container not found within editorContainerTarget! Editor cannot be created.");
+      this.editorContainerTarget.innerHTML = '<div class="error">Error: Monaco editor UI container not found.</div>';
+      return;
     }
     
-    console.log("Creating Monaco editor with language:", language);
+    // Clear only the monacoContainer before creating a new editor instance in it
+    monacoContainer.innerHTML = ''; 
+    // console.log("INLINE_EDITOR: createEditor - monacoContainer.innerHTML = \'\' WAS COMMENTED OUT FOR TEST");
+
+    // console.log("Creating Monaco editor with language:", language);
     
     try {
       // Create the editor with minimal config for performance
@@ -430,15 +375,15 @@ export default class extends Controller {
         }
       });
       
-      console.log("Monaco editor created successfully");
+      // console.log("Monaco editor created successfully");
       
       // Update file path icon
-      const iconElement = this.editorContainerTarget.querySelector('#file-path-icon');
+      const iconElement = this.editorContainerTarget.querySelector('#file-path-icon'); // This is in the footer, a sibling to monacoContainer
       if (iconElement) {
         const iconClasses = this.getLanguageBadgeClass(language || 'plaintext');
-        iconElement.className = `file-icon ${iconClasses}`; // Set base class + Font Awesome icon classes
+        iconElement.className = `file-icon ${iconClasses}`;
       } else {
-        console.warn("Could not find #file-path-icon element to update.");
+        // console.warn("Could not find #file-path-icon element to update.");
       }
       
       // Force a layout update immediately
@@ -475,7 +420,7 @@ export default class extends Controller {
   
   // Show the repository info panel, hide the editor
   showInfo() {
-    console.log("Showing info panel, hiding editor");
+    // console.log("Showing info panel, hiding editor");
     
     // Record time for current file if needed
     if (this.currentFileId) {
@@ -497,16 +442,18 @@ export default class extends Controller {
       this.editor = null;
     }
     
-    // Hide editor container first
+    // Hide editor container and show info panel using CSS classes
     if (this.hasEditorContainerTarget) {
-      this.editorContainerTarget.style.display = 'none';
-      // Clear editor content to free memory
+      this.editorContainerTarget.classList.add('hidden');
+      // Optionally clear editor content to free memory, and remove explicit style.display if hidden handles it
+      // this.editorContainerTarget.style.display = 'none'; 
       this.editorContainerTarget.innerHTML = '';
     }
     
-    // Then show the info panel
     if (this.hasInfoPanelTarget) {
-      this.infoPanelTarget.style.display = 'block';
+      this.infoPanelTarget.classList.remove('hidden');
+      // Optionally remove explicit style.display if hidden handles it
+      // this.infoPanelTarget.style.display = 'block'; 
       
       // Force a layout refresh
       setTimeout(() => {

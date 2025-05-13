@@ -169,7 +169,8 @@
                         </div>
                         <div class="files-list">
                           <% concept.key_files.each do |file_path| %>
-                            <% file = @repository.try(:repository_files).try(:find_by, path: file_path) %>
+                            <%# Use the pre-fetched @key_files_map %>
+                            <% file = @key_files_map[file_path] %> 
                             <%= render 'concept_file_item', file: file, file_path: file_path, viewed_file_ids: @viewed_file_ids if file_path.present? %>
                           <% end %>
                         </div>

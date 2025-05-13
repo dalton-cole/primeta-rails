@@ -1,6 +1,67 @@
 // Configure your import map in config/importmap.rb. Read more: https://github.com/rails/importmap-rails
 import "@hotwired/turbo-rails"
 import "controllers"
+// import { createConsumer } from "@rails/actioncable" // We will import the consumer from channels/consumer.js
+import consumer from "channels/consumer" // Import the consumer from the generated file
+
+// Make consumer globally available if needed by Stimulus controllers
+// that don't import it directly. This is a fallback.
+// Turbo should pick up the imported 'consumer' on its own.
+window.actionCableConsumer = consumer;
+console.log("Action Cable consumer instance created and assigned to window.actionCableConsumer.");
+
+// The 'consumer' is now imported from channels/consumer.js
+// const consumer = createConsumer() // This line is removed
+
+// Make the consumer available to Turbo
+// Defer assignment until DOM is loaded to ensure Turbo is fully initialized
+// document.addEventListener('DOMContentLoaded', () => {
+//   if (typeof Turbo !== 'undefined') {
+//     console.log("Attempting to assign Action Cable consumer (imported from channels/consumer.js)...");
+//     let assignedToTurboDotCable = false;
+
+//     // Try standard Turbo.cable first
+//     if (Object.isExtensible(Turbo)) {
+//       try {
+//         Turbo.cable = consumer; // Use the imported consumer
+//         console.log("Action Cable consumer assigned to Turbo.cable");
+//         assignedToTurboDotCable = true;
+//       } catch (e) {
+//         console.error("Error assigning to Turbo.cable:", e);
+//       }
+//     } else {
+//       console.warn("Turbo object is not extensible.");
+//     }
+
+//     // If Turbo.cable assignment failed or wasn't possible, AND Turbo.session exists,
+//     // try assigning to Turbo.session.cable directly.
+//     if (!assignedToTurboDotCable && Turbo.session) {
+//       console.log("Turbo.cable assignment failed or Turbo was not extensible. Attempting Turbo.session.cable...");
+//       if (Object.isExtensible(Turbo.session)) {
+//         try {
+//           Turbo.session.cable = consumer; // Use the imported consumer
+//           console.log("Action Cable consumer assigned to Turbo.session.cable");
+//         } catch (e) {
+//           console.error("Error assigning to Turbo.session.cable:", e);
+//           console.error("Failed to assign to Turbo.session.cable. Falling back to global assignment.");
+//           window.actionCableConsumer = consumer; // Use the imported consumer
+//           console.log("Action Cable consumer assigned to window.actionCableConsumer as a fallback.");
+//         }
+//       } else {
+//         console.warn("Turbo.session object is not extensible. Falling back to global assignment.");
+//         window.actionCableConsumer = consumer; // Use the imported consumer
+//         console.log("Action Cable consumer assigned to window.actionCableConsumer due to non-extensible Turbo.session.");
+//       }
+//     } else if (!assignedToTurboDotCable) {
+//       console.error("Turbo.cable assignment failed and Turbo.session not available. Falling back to global assignment.");
+//       window.actionCableConsumer = consumer; // Use the imported consumer
+//       console.log("Action Cable consumer assigned to window.actionCableConsumer as a fallback.");
+//     }
+
+//   } else {
+//     console.error("Turbo not loaded on DOMContentLoaded, cannot assign Action Cable consumer.");
+//   }
+// });
 
 // Monaco editor theme definition
 // Define the theme immediately when this file loads
@@ -165,3 +226,4 @@ if (typeof window.requestIdleCallback === 'function') {
     window.loadMonacoEditor();
   }, 1000);
 }
+import "channels"

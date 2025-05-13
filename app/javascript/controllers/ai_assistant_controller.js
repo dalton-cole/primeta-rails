@@ -23,12 +23,12 @@ export default class extends Controller {
   }
   
   connect() {
-    console.log("NEW_LOGIC: connect() called.");
-    console.log("NEW_LOGIC: Initial Page Type from DOM:", this.element.dataset.aiAssistantPageTypeValue);
-    console.log("NEW_LOGIC: Controller Initialized. Page Type (this.pageTypeValue):", this.pageTypeValue);
-    console.log("NEW_LOGIC: Target Check: hasPanelTarget?", this.hasPanelTarget);
-    console.log("NEW_LOGIC: Target Check: hasStaticAboutContextContentTarget?", this.hasStaticAboutContextContentTarget);
-    console.log("NEW_LOGIC: Target Check: hasRepositoryGuideContextContentTarget?", this.hasRepositoryGuideContextContentTarget);
+    // console.log("NEW_LOGIC: connect() called.");
+    // console.log("NEW_LOGIC: Initial Page Type from DOM:", this.element.dataset.aiAssistantPageTypeValue);
+    // console.log("NEW_LOGIC: Controller Initialized. Page Type (this.pageTypeValue):", this.pageTypeValue);
+    // console.log("NEW_LOGIC: Target Check: hasPanelTarget?", this.hasPanelTarget);
+    // console.log("NEW_LOGIC: Target Check: hasStaticAboutContextContentTarget?", this.hasStaticAboutContextContentTarget);
+    // console.log("NEW_LOGIC: Target Check: hasRepositoryGuideContextContentTarget?", this.hasRepositoryGuideContextContentTarget);
     // Add more target checks here if needed for debugging initial connection
 
     // --- Initialize Internal State ---
@@ -42,14 +42,14 @@ export default class extends Controller {
 
     if (this.pageTypeValue === 'repository_file' && this.hasInitialFilePathValue) {
       this.currentDisplayFilePath = this.initialFilePathValue;
-      console.log("NEW_LOGIC: connect() - Set currentDisplayFilePath from initial value:", this.currentDisplayFilePath);
+      // console.log("NEW_LOGIC: connect() - Set currentDisplayFilePath from initial value:", this.currentDisplayFilePath);
     }
 
     this.updatePanelVisibility();
     this._boundHandleFileSelected = this._handleFileSelected.bind(this);
     this.setupEventListeners();
     this.updatePanelDisplayLogic(); 
-    console.log("NEW_LOGIC: connect() completed.");
+    // console.log("NEW_LOGIC: connect() completed.");
   }
   
   disconnect() {
@@ -82,11 +82,11 @@ export default class extends Controller {
     this.updatePanelVisibility();
 
     if (!this.collapsed && this.currentDisplayFilePath) { // Panel opened and a file path is set
-      console.log("TOGGLE_ACTION: Panel opened with file path:", this.currentDisplayFilePath);
+      // console.log("TOGGLE_ACTION: Panel opened with file path:", this.currentDisplayFilePath);
       // Check if data needs fetching 
       let needsFetch = false;
       if (!this.fetchedContextData && !this.isLoadingContext) {
-        console.log("TOGGLE_ACTION: Triggering context fetch on open.");
+        // console.log("TOGGLE_ACTION: Triggering context fetch on open.");
         this.isLoadingContext = true;
         needsFetch = true;
         this.fetchFileContext();
@@ -95,16 +95,16 @@ export default class extends Controller {
       // Update display immediately (shows loading if fetch started, or existing content)
       this.updatePanelDisplayLogic(); 
     } else if (!this.collapsed) { // Panel opened, but no file path set
-      console.log("TOGGLE_ACTION: Panel opened without file path (showing static/guide).");
+      // console.log("TOGGLE_ACTION: Panel opened without file path (showing static/guide).");
       // Just ensure the display logic runs for static/guide content
       this.updatePanelDisplayLogic(); 
     } else {
-      console.log("TOGGLE_ACTION: Panel closed.");
+      // console.log("TOGGLE_ACTION: Panel closed.");
     }
   }
   
   updatePanelDisplayLogic() {
-    console.log(`⭐ updatePanelDisplayLogic: Type=${this.pageTypeValue}, File=${this.currentDisplayFilePath || 'none'}, LoadingCtx=${this.isLoadingContext}`);
+    // console.log(`⭐ updatePanelDisplayLogic: Type=${this.pageTypeValue}, File=${this.currentDisplayFilePath || 'none'}, LoadingCtx=${this.isLoadingContext}`);
     
     const panel = this.hasPanelTarget ? this.panelTarget : null;
     const loadingIndicator = this.hasLoadingIndicatorTarget ? this.loadingIndicatorTarget : null;
@@ -125,7 +125,7 @@ export default class extends Controller {
     let showLoading = this.isLoadingContext; 
 
     if (showLoading && loadingIndicator) {
-      console.log("⭐ Displaying: Loading Indicator");
+      // console.log("⭐ Displaying: Loading Indicator");
       loadingIndicator.classList.remove('hidden');
     } else {
       let targetContentBlock = null;
@@ -134,10 +134,10 @@ export default class extends Controller {
 
       if (this.pageTypeValue === 'static') {
         targetContentBlock = staticAboutCtx;
-        console.log("⭐ Displaying: Static About Context");
+        // console.log("⭐ Displaying: Static About Context");
       } else if (this.pageTypeValue === 'repository_guide' && !this.currentDisplayFilePath) {
         targetContentBlock = repoGuideCtx;
-        console.log("⭐ Displaying: Repository Guide Context");
+        // console.log("⭐ Displaying: Repository Guide Context");
       } else if (this.currentDisplayFilePath && this.fetchedContextData !== null) {
         targetContentBlock = dynamicFileCtx;
         if (targetContentBlock) {
@@ -148,17 +148,17 @@ export default class extends Controller {
           const feedbackHtml = this.createFeedbackUI('context');
           targetContentBlock.innerHTML = formattedContent + feedbackHtml;
           isDynamicContentLoaded = true;
-          console.log("⭐ Displaying: Dynamic File Context");
+          // console.log("⭐ Displaying: Dynamic File Context");
         }
       } else if (this.currentDisplayFilePath && !this.isLoadingContext) {
          errorMsgText = "Context not available for the selected file.";
-         console.warn("⭐ Context state: File selected, no data, not loading.");
+         // console.warn("⭐ Context state: File selected, no data, not loading.");
       } else if (!this.currentDisplayFilePath && this.pageTypeValue === 'repository_file') {
           errorMsgText = "No file selected.";
-          console.warn("⭐ Context state: On file page, but no file selected/loading.");
+          // console.warn("⭐ Context state: On file page, but no file selected/loading.");
       } else if (this.pageTypeValue !== 'static') { 
           targetContentBlock = repoGuideCtx;
-          console.log("⭐ Displaying: Repository Guide Context (Fallback)");
+          // console.log("⭐ Displaying: Repository Guide Context (Fallback)");
       }
       
       if (targetContentBlock) {
@@ -169,21 +169,21 @@ export default class extends Controller {
       } else if (errorMessage) {
         errorMessage.textContent = errorMsgText || "AI Assistant content not available for this state.";
         errorMessage.classList.remove('hidden');
-        console.warn("⭐ Displaying: Error Message - ", errorMessage.textContent);
+        // console.warn("⭐ Displaying: Error Message - ", errorMessage.textContent);
       }
     }
-    console.log("⭐ updatePanelDisplayLogic completed.");
+    // console.log("⭐ updatePanelDisplayLogic completed.");
   }
   
   updatePanelVisibility() {
-    console.log("PANEL_VIS: updatePanelVisibility called. Collapsed:", this.collapsed, "Has Panel Target?", this.hasPanelTarget);
+    // console.log("PANEL_VIS: updatePanelVisibility called. Collapsed:", this.collapsed, "Has Panel Target?", this.hasPanelTarget);
     if (this.hasPanelTarget) {
       if (this.collapsed) {
         this.panelTarget.classList.add("hidden");
-        console.log("PANEL_VIS: Added 'hidden' to panel.");
+        // console.log("PANEL_VIS: Added 'hidden' to panel.");
       } else {
         this.panelTarget.classList.remove("hidden");
-        console.log("PANEL_VIS: Removed 'hidden' from panel.");
+        // console.log("PANEL_VIS: Removed 'hidden' from panel.");
       }
     } else {
       console.error("PANEL_VIS_ERROR: Panel target not found!");
@@ -191,16 +191,16 @@ export default class extends Controller {
   }
   
   fetchFileContext() {
-    console.log("fetchFileContext called");
+    // console.log("fetchFileContext called");
     // Use internal state currentDisplayFilePath instead of initialFilePathValue or targets
     const filePath = this.currentDisplayFilePath;
     const repositoryId = this.repositoryIdValue;
 
-    console.log("Current Display File Path:", filePath);
-    console.log("repositoryIdValue:", repositoryId);
+    // console.log("Current Display File Path:", filePath);
+    // console.log("repositoryIdValue:", repositoryId);
     
     if (!this.canMakeRequest('file_context')) {
-      console.log("Request throttled, ignoring");
+      // console.log("Request throttled, ignoring");
       this.isLoadingContext = false; 
       this.updatePanelDisplayLogic(); 
       return;
@@ -212,7 +212,7 @@ export default class extends Controller {
     const adminMode = this.hasIsAdminValue && this.isAdminValue;
     const refreshParam = adminMode ? '&refresh=true' : '' // Simplified for now
     
-    console.log("Final values for API call:", { filePath, repositoryId });
+    // console.log("Final values for API call:", { filePath, repositoryId });
     
     // Validation to prevent malformed requests
     if (!repositoryId || !filePath) {
@@ -229,7 +229,7 @@ export default class extends Controller {
     const encodedFilePath = encodeURIComponent(filePath);
     const url = `/api/file_context?repository_id=${repositoryId}&file_path=${encodedFilePath}${refreshParam}`;
     
-    console.log("Fetching file context from API:", url);
+    // console.log("Fetching file context from API:", url);
     
     fetch(url)
       .then(response => {
@@ -241,11 +241,11 @@ export default class extends Controller {
         return response.json();
       })
       .then(data => {
-        console.log("Fetch successful, received data for:", filePath);
+        // console.log("Fetch successful, received data for:", filePath);
         // Explicitly check if explanation exists and is a string
         if (data && typeof data.explanation === 'string') {
           this.fetchedContextData = data.explanation;
-          console.log("NEW_LOGIC: Assigned data.explanation to fetchedContextData.");
+          // console.log("NEW_LOGIC: Assigned data.explanation to fetchedContextData.");
         } else {
           console.warn("API Response for context missing or invalid 'explanation' field. Data:", data);
           this.fetchedContextData = ""; // Assign empty string instead of undefined/null
@@ -266,66 +266,34 @@ export default class extends Controller {
   }
   
   _handleFileSelected(filePath) {
-    if (!filePath) {
-      console.warn("NEW_LOGIC: _handleFileSelected called with no filePath.");
+    // console.log('NEW_LOGIC: _handleFileSelected processing file:', filePath);
+    
+    if (this.isLoadingContext && this.currentDisplayFilePath === filePath) {
+      // console.log('NEW_LOGIC: Skipping selection, already loading this file:', filePath);
       return;
     }
-    
-    console.log("NEW_LOGIC: _handleFileSelected processing file:", filePath);
 
-    // Skip if this file is already displayed and loaded (and not currently loading)
-    if (this.currentDisplayFilePath === filePath && this.fetchedContextData !== null && !this.isLoadingContext) {
-      console.log("NEW_LOGIC: Skipping redundant selection for already loaded file:", filePath);
-      if (this.collapsed) { // Still open panel if user clicked again
-        this.collapsed = false;
-        this.updatePanelVisibility();
-        this.updatePanelDisplayLogic(); // Ensure content is shown
-      }
-      return;
+    if (this.currentDisplayFilePath !== filePath) {
+      // console.log('NEW_LOGIC: Processing new file selection. Old path:', this.currentDisplayFilePath, 'New path:', filePath);
+      this.currentDisplayFilePath = filePath;
+      this.fetchedContextData = null; // Clear old context
+      this.isLoadingContext = true; 
+      this.updatePanelDisplayLogic(); // Show loading indicator
+      this.fetchFileContext(); // Fetch new context
+    } else if (!this.fetchedContextData && !this.isLoadingContext) { // File path is same, but no data and not loading
+      // console.log('NEW_LOGIC: Same file path, but no data. Triggering fetch.');
+      this.isLoadingContext = true;
+      this.updatePanelDisplayLogic(); // Show loading indicator
+      this.fetchFileContext();
     }
-    
-    // Skip if we are currently trying to load this exact file path
-    if (this.currentDisplayFilePath === filePath && this.isLoadingContext) {
-      console.log("NEW_LOGIC: Skipping selection, already loading this file:", filePath);
-      if (this.collapsed) { // Still open panel if user clicked again
-        this.collapsed = false;
-        this.updatePanelVisibility();
-        this.updatePanelDisplayLogic(); // updatePanelDisplayLogic will show loading if already loading
-      }
-      return;
-    }
-    
-    console.log(`NEW_LOGIC: Processing new file selection. Old path: ${this.currentDisplayFilePath}, New path: ${filePath}`);
-
-    this.currentDisplayFilePath = filePath;
-    this.fetchedContextData = null;
-    this.isLoadingContext = true;
-
-    // Update the hidden input target if it exists (e.g. for forms or other controllers)
-    if (this.hasContextFilePathTarget) {
-      this.contextFilePathTarget.value = filePath;
-    }
-
-    if (this.collapsed) {
-      this.collapsed = false;
-      this.updatePanelVisibility();
-    }
-
-    // Update UI to show loading state via the main display logic function
-    console.log("NEW_LOGIC: _handleFileSelected calling updatePanelDisplayLogic to show loading.");
-    this.updatePanelDisplayLogic();
-
-    // Initiate the fetch for the new file's context
-    console.log("NEW_LOGIC: _handleFileSelected calling fetchFileContext.");
-    this.fetchFileContext();
   }
   
   // Method to try to repair the file path
   tryRepairFilePath() {
-    console.log("NEW_LOGIC: tryRepairFilePath called.");
+    // console.log("Attempting to repair file path...");
     const extractedPath = this.extractFilePathFromURL();
     if (extractedPath) {
-      console.log("NEW_LOGIC: Path extracted by tryRepairFilePath:", extractedPath);
+      // console.log("NEW_LOGIC: Path extracted by tryRepairFilePath:", extractedPath);
       // Use the new bound class method
       this._boundHandleFileSelected(extractedPath);
         return;
@@ -338,7 +306,7 @@ export default class extends Controller {
   }
   
   setupEventListeners() {
-    console.log("NEW_LOGIC: Setting up event listeners.");
+    // console.log("NEW_LOGIC: Setting up event listeners.");
 
     // Helper to attach click listeners to file links
     const attachFileListeners = (elements) => {
@@ -347,7 +315,7 @@ export default class extends Controller {
           link.setAttribute('data-ai-listener-attached', 'true');
           link.addEventListener('click', (event) => {
             const filePathFromLink = link.dataset.path || link.textContent.trim();
-            console.log("NEW_LOGIC: Direct file click detected on:", filePathFromLink);
+            // console.log("NEW_LOGIC: Direct file click detected on:", filePathFromLink);
             // Use the bound class method, possibly with a slight delay for Turbo
             setTimeout(() => this._boundHandleFileSelected(filePathFromLink), 50); 
           });
@@ -357,10 +325,8 @@ export default class extends Controller {
     
     // Monaco editor event listener
     this._boundMonacoFileSelectedHandler = (event) => {
-      console.log("NEW_LOGIC: Monaco 'monaco:file-selected' event", event.detail);
-      if (event.detail && event.detail.filePath) {
-        this._boundHandleFileSelected(event.detail.filePath);
-      }
+      // console.log("NEW_LOGIC: Monaco 'monaco:file-selected' event", event.detail);
+      this._handleFileSelected(event.detail.filePath); 
     };
     document.addEventListener('monaco:file-selected', this._boundMonacoFileSelectedHandler);
 
@@ -400,21 +366,21 @@ export default class extends Controller {
         }
         
         if (detectedFilePath) {
-          console.log("NEW_LOGIC: Initial file detected on load:", detectedFilePath);
+          // console.log("NEW_LOGIC: Initial file detected on load:", detectedFilePath);
           // If connect() already set currentDisplayFilePath from initialFilePathValue, this won't run.
           // If initialFilePathValue was NOT present, and we detect a file, we select it.
           // This allows auto-selection if the page loads on a file view without initialFilePathValue being set.
           if (!this.currentDisplayFilePath) {
-             console.log("NEW_LOGIC: Triggering selection for initially detected file as currentDisplayFilePath was null.", detectedFilePath);
+             // console.log("NEW_LOGIC: Triggering selection for initially detected file as currentDisplayFilePath was null.", detectedFilePath);
              this._boundHandleFileSelected(detectedFilePath);
           } else {
-            console.log("NEW_LOGIC: currentDisplayFilePath already set, not re-triggering for detected file.", this.currentDisplayFilePath)
+            // console.log("NEW_LOGIC: currentDisplayFilePath already set, not re-triggering for detected file.", this.currentDisplayFilePath)
           }
         } else {
-          console.log("NEW_LOGIC: No initial file detected on load for repository_file page type, or path already set.");
+          // console.log("NEW_LOGIC: No initial file detected on load for repository_file page type, or path already set.");
         }
       } else {
-         console.log("NEW_LOGIC: Skipping initial file detection (not repo_file page, or file/loading already in progress, or currentDisplayFilePath already set).");
+         // console.log("NEW_LOGIC: Skipping initial file detection (not repo_file page, or file/loading already in progress, or currentDisplayFilePath already set).");
       }
     }, 1000);
 
@@ -424,7 +390,7 @@ export default class extends Controller {
         if (this._lastObservedUrlPath !== currentUrlPath) {
             const previousPath = this._lastObservedUrlPath;
             this._lastObservedUrlPath = currentUrlPath;
-            console.log(`NEW_LOGIC: URL MutationObserver detected change from ${previousPath} to ${currentUrlPath}`);
+            // console.log(`NEW_LOGIC: URL MutationObserver detected change from ${previousPath} to ${currentUrlPath}`);
             this._handleUrlChange(currentUrlPath);
         }
     });
@@ -436,7 +402,7 @@ export default class extends Controller {
   }
 
   handlePopState(event) {
-    console.log("NEW_LOGIC: popstate event detected. Current URL path:", window.location.pathname);
+    // console.log("NEW_LOGIC: popstate event detected. Current URL path:", window.location.pathname);
     setTimeout(() => {
       this._handleUrlChange(window.location.pathname);
     }, 50); 
@@ -447,19 +413,19 @@ export default class extends Controller {
           const extractedPath = this.extractFilePathFromURL();
           // Check if extracted path is valid and different from the currently displayed file
           if (extractedPath && extractedPath !== this.currentDisplayFilePath) {
-              console.log("NEW_LOGIC: URL change detected a new file path:", extractedPath);
+              // console.log("NEW_LOGIC: URL change detected a new file path:", extractedPath);
               // Use the main handler
               this._boundHandleFileSelected(extractedPath); 
           } else if (extractedPath && extractedPath === this.currentDisplayFilePath) {
-              console.log("NEW_LOGIC: URL changed, but path is the same as current. Ignoring.");
+              // console.log("NEW_LOGIC: URL changed, but path is the same as current. Ignoring.");
           } else if (!extractedPath && this.currentDisplayFilePath) {
               // Navigated away from a file view to a non-file view (e.g., repo root)
-              console.log("NEW_LOGIC: URL changed away from file view. Clearing current file path.");
+              // console.log("NEW_LOGIC: URL changed away from file view. Clearing current file path.");
               this._clearCurrentFileState();
           }
       } else if (this.currentDisplayFilePath) {
           // URL changed to something that doesn't include '/files/', and we previously had a file loaded
-          console.log("NEW_LOGIC: URL changed to non-file view. Clearing current file path.");
+          // console.log("NEW_LOGIC: URL changed to non-file view. Clearing current file path.");
           this._clearCurrentFileState();
       }
   }
@@ -664,7 +630,7 @@ export default class extends Controller {
     })
     .then(response => response.json())
     .then(data => {
-      console.log(`🔍 AI Assistant - Existing feedback check for ${contentType}:`, data);
+      // console.log(`🔍 AI Assistant - Existing feedback check for ${contentType}:`, data);
       
       if (data.has_feedback) {
         // Use a more specific selector that includes the target file path or ID if possible
@@ -750,43 +716,24 @@ export default class extends Controller {
     
     // Don't throttle if this is the first request or it's been long enough since the last one
     if (lastRequestTime === 0 || timeSinceLastRequest >= this.requestThrottleMs) {
-      console.log(`AI Assistant: Request for ${requestType} allowed`);
+      // console.log(`AI Assistant: Request for ${requestType} allowed`);
       return true;
     }
     
-    console.log(`AI Assistant: Request for ${requestType} throttled (made ${timeSinceLastRequest}ms ago)`);
+    // console.log(`AI Assistant: Request for ${requestType} throttled (made ${timeSinceLastRequest}ms ago)`);
     return false;
   }
 
   extractFilePathFromURL() {
-    try {
-      const url = window.location.pathname;
-      // More specific regex to avoid matching other IDs
-      const matches = url.match(/\/repositories\/\d+\/files\/(.+)/);
-      if (matches && matches[1]) {
-        // Decode URI component and remove potential trailing slash
-        return decodeURIComponent(matches[1]).replace(/\/$/, '');
-      }
-      
-      // If direct pattern match fails, try to find it in the breadcrumbs
-      const breadcrumbs = document.querySelector('.breadcrumbs');
-      if (breadcrumbs) {
-        const pathParts = breadcrumbs.textContent.trim().split('/');
-        if (pathParts.length > 2) {
-          return pathParts.slice(2).join('/').trim();
-        }
-      }
-      
-      // Try to get from Monaco editor if available
-      const monacoElement = document.querySelector('[data-controller="monaco"]');
-      if (monacoElement && monacoElement.dataset.monacoFilePathValue) {
-        return monacoElement.dataset.monacoFilePathValue;
-      }
-      
-      return null;
-    } catch (e) {
-      console.error("Error extracting file path from URL:", e);
-      return null;
+    // This is a fallback, prefer explicit data from events or initial values
+    const path = window.location.pathname;
+    const match = path.match(/repositories\/\d+\/files\/(.+)/);
+    if (match && match[2]) {
+      const filePath = decodeURIComponent(match[2]);
+      // console.log("NEW_LOGIC: Extracted file path from URL:", filePath);
+      return filePath;
     }
+    // console.log("NEW_LOGIC: No file path extracted from URL.");
+    return null;
   }
 } 

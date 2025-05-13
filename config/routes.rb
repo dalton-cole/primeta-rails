@@ -1,4 +1,7 @@
 Rails.application.routes.draw do
+  # Mount Action Cable server
+  mount ActionCable.server => '/cable'
+
   # Devise routes with OmniAuth callbacks
   devise_for :users, controllers: {
     omniauth_callbacks: 'users/omniauth_callbacks',

@@ -53,17 +53,45 @@ class ProgressTrackingService
   def broadcast_progress_update
     progress_data = calculate_progress
     
-    # Broadcast to multiple channels based on context
-    [
-      "repository_#{@repository.id}",          # General repository stream
+    # Define common locals for the partials
+    # Note: @repository is an instance variable, progress_data is a hash
+    common_locals = { repository: @repository }.merge(progress_data)
+    
+    # Target IDs for updates
+    files_metric_target = "files_metric_#{@repository.id}"
+    key_files_metric_target = "key_files_metric_#{@repository.id}"
+    achievement_badges_target = "achievement_badges_#{@repository.id}"
+    
+    # Stream names to broadcast to
+    stream_names = [
+      "repository_#{@repository.id}",          # General repository stream (might receive other updates)
       "repository_#{@repository.id}_progress", # Specific progress stream
-      "user_#{@user.id}"                       # User-specific stream
-    ].each do |stream_name|
-      Turbo::StreamsChannel.broadcast_replace_to(
+      "user_#{@user.id}"                       # User-specific stream (might receive other updates)
+    ]
+    
+    stream_names.each do |stream_name|
+      # Update Files Viewed metric
+      Turbo::StreamsChannel.broadcast_update_to(
         stream_name,
-        target: "repository_progress_#{@repository.id}",
-        partial: "repositories/progress",
-        locals: { repository: @repository }.merge(progress_data)
+        target: files_metric_target,
+        partial: "repositories/files_progress_metric_content",
+        locals: common_locals
+      )
+      
+      # Update Key Files Viewed metric
+      Turbo::StreamsChannel.broadcast_update_to(
+        stream_name,
+        target: key_files_metric_target,
+        partial: "repositories/key_files_progress_metric_content",
+        locals: common_locals
+      )
+      
+      # Update Achievement Badges
+      Turbo::StreamsChannel.broadcast_update_to(
+        stream_name,
+        target: achievement_badges_target,
+        partial: "repositories/achievement_badges_content",
+        locals: common_locals
       )
     end
     

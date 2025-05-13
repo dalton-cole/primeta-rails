@@ -1,0 +1,12 @@
+<% if key_files_count > 0 %>
+  <div class="progress-metric">
+    <div class="progress-label">
+      <span>Key Files Viewed</span>
+      <span class="progress-value" id="key_files_value_<%= repository.id %>" data-progress-tracker-target="keyFilesValue"><%= viewed_key_files_count %> / <%= key_files_count %></span>
+    </div>
+    <div class="progress-bar-container">
+      <div class="progress-bar progress-bar-key" id="key_files_progress_bar_<%= repository.id %>" data-progress-tracker-target="keyFilesProgress" style="width: <%= key_files_progress_percentage.to_s + '%' %>;"></div>
+    </div>
+    <div class="progress-percentage" id="key_files_percentage_text_<%= repository.id %>" data-progress-tracker-target="keyFilesPercentage" data-percentage="<%= key_files_progress_percentage %>%"><%= key_files_progress_percentage %>%</div>
+  </div>
+<% end %> 

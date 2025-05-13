@@ -71,8 +71,15 @@ Rails.application.configure do
   # Annotate rendered view with file names.
   config.action_view.annotate_rendered_view_with_filenames = true
 
+  # Action Cable settings
+  config.action_cable.url = "ws://localhost:3000/cable"
+  config.action_cable.allowed_request_origins = [ "http://localhost:3000" ]
+  # If you were using HTTPS in development (e.g. via ngrok or a custom setup):
+  # config.action_cable.url = "wss://your-dev-domain.com/cable"
+  # config.action_cable.allowed_request_origins = [ "https://your-dev-domain.com" ]
+
   # Uncomment if you wish to allow Action Cable access from any origin.
-  # config.action_cable.disable_request_forgery_protection = true
+  # config.action_cable.disable_request_forgery_protection = true # Generally not needed if origins are set
 
   # Raise error when a before_action's only/except options reference missing actions
   config.action_controller.raise_on_missing_callback_actions = true

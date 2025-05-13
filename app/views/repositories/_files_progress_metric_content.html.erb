@@ -1,0 +1,8 @@
+<div class="progress-label">
+  <span>Files Viewed</span>
+  <span class="progress-value" id="files_value_<%= repository.id %>" data-progress-tracker-target="filesValue"><%= viewed_files_count %> / <%= total_files_count %></span>
+</div>
+<div class="progress-bar-container">
+  <div class="progress-bar" id="files_progress_bar_<%= repository.id %>" data-progress-tracker-target="filesProgress" style="width: <%= files_progress_percentage.to_s + '%' %>;"></div>
+</div>
+<div class="progress-percentage" id="files_percentage_text_<%= repository.id %>" data-progress-tracker-target="filesPercentage" data-percentage="<%= files_progress_percentage %>%"><%= files_progress_percentage %>%</div> 
