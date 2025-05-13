@@ -107,28 +107,10 @@
           
           <!-- Key Files Tab -->
           <div class="tab-content" id="key-files-tab" data-tab-manager-target="tabContent">
-            <h2>Key Files</h2>
-            <p>These files have been identified as particularly important to understand the codebase:</p>
-            
-            <% if @key_files_from_concepts.try(:any?) %>
-              <div class="key-files-list">
-                <% @key_files_from_concepts.each do |file| %>
-                  <% viewed = file.present? && @viewed_file_ids.try(:include?, file.id) %>
-                  <%= render 'key_file_item', file: file, viewed: viewed %>
-                <% end %>
-              </div>
-            <% else %>
-              <div class="key-files-empty">
-                <i class="fas fa-key"></i>
-                <h3>No key files identified yet</h3>
-                <p>
-                  Key files are automatically identified when the system analyzes concepts in this repository.
-                  <% if current_user.admin? %>
-                    Try using the "Extract Concepts" feature or analyzing specific concepts in the Concepts tab.
-                  <% else %>
-                    They will appear here once they've been identified by the system.
-                  <% end %>
-                </p>
+            <%= turbo_frame_tag "key_files_content", src: key_files_repository_path(@repository) do %>
+              <div class="loading-placeholder" style="text-align: center; padding: 2rem;">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p style="margin-top: 0.5rem;">Loading key files...</p>
               </div>
             <% end %>
           </div>

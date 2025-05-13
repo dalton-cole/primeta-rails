@@ -24,6 +24,7 @@ Rails.application.routes.draw do
       post :extract_key_concepts
       post :analyze_concept
       get :tree
+      get :key_files
     end
     resources :repository_files, only: [:index], controller: 'repositories/repository_files'
     post :track_time, on: :member

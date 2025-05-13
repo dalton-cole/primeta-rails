@@ -1,0 +1,33 @@
+<%# app/views/repositories/_key_files_list_content.html.erb %>
+<%= turbo_frame_tag "key_files_content" do %>
+  <h2>Key Files</h2>
+  <p>These files have been identified as particularly important to understand the codebase:</p>
+
+  <% if key_files_from_concepts.try(:any?) %>
+    <div class="key-files-list">
+      <% key_files_from_concepts.each do |file| %>
+        <%# Ensure 'file' object is present before attempting to access its properties or pass to another partial %>
+        <% if file.present? %>
+          <% viewed = @viewed_file_ids.try(:include?, file.id) %>
+          <%= render 'key_file_item', file: file, viewed: viewed %>
+        <% else %>
+          <%# Optionally log or display a message if a file object is unexpectedly nil %>
+          <% Rails.logger.warn "Skipping render for a nil file object in _key_files_list_content.html.erb" %>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="key-files-empty">
+      <i class="fas fa-key"></i>
+      <h3>No key files identified yet</h3>
+      <p>
+        Key files are automatically identified when the system analyzes concepts in this repository.
+        <% if current_user.admin? %>
+          Try using the "Extract Concepts" feature or analyzing specific concepts in the Concepts tab.
+        <% else %>
+          They will appear here once they've been identified by the system.
+        <% end %>
+      </p>
+    </div>
+  <% end %>
+<% end %><%# End of turbo_frame_tag "key_files_content" %> 

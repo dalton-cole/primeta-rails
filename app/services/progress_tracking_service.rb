@@ -14,26 +14,22 @@ class ProgressTrackingService
     
     Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
       # Load repository files and viewed files in bulk to avoid N+1 queries
-      # repository_files_relation = repository.repository_files # Avoid loading all into memory unless needed
-      viewed_file_ids = user.file_views
+      viewed_file_ids_for_repo = user.file_views
                             .joins(:repository_file)
                             .where(repository_files: { repository_id: repository.id })
                             .pluck(:repository_file_id).to_set
       
-      # Get key file paths from concepts in a single pass
-      key_file_paths = fetch_key_file_paths
-      
-      # Find key files in a single query
-      key_files = key_file_paths.present? ? repository.repository_files.where(path: key_file_paths) : []
+      # Get the cached set of all key file IDs for the repository
+      all_key_file_ids_for_repo = repository.key_file_ids_set
       
       # Calculate progress metrics
-      # Use counter cache for total files count for efficiency
       total_files_count = repository.repository_files_count 
-      viewed_files_count = viewed_file_ids.count
+      viewed_files_count = viewed_file_ids_for_repo.count # Total files viewed by user in this repo
       files_progress_percentage = total_files_count > 0 ? ((viewed_files_count.to_f / total_files_count) * 100).round(1) : 0
       
-      key_files_count = key_files.count
-      viewed_key_files_count = key_files.count { |file| viewed_file_ids.include?(file.id) }
+      key_files_count = all_key_file_ids_for_repo.count
+      # Viewed key files are the intersection of all key files in repo and files viewed by user in this repo
+      viewed_key_files_count = (all_key_file_ids_for_repo & viewed_file_ids_for_repo).count
       key_files_progress_percentage = key_files_count > 0 ? ((viewed_key_files_count.to_f / key_files_count) * 100).round(1) : 0
       
       {
@@ -96,6 +92,10 @@ class ProgressTrackingService
   end
   
   def fetch_key_file_paths
+    # This method is no longer directly used by calculate_progress for determining key files count or viewed key files.
+    # It might still be used by other parts of the codebase if they need the actual paths.
+    # For calculate_progress, we now rely on repository.key_file_ids_set.
+    
     # Handle case when repository is nil
     return [] unless repository.present?
     

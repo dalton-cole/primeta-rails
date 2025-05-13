@@ -147,6 +147,24 @@ class Repository < ApplicationRecord
     "https://github.com/#{info[:owner]}.png?size=40"
   end
   
+  def key_file_ids_set
+    Rails.cache.fetch("repository/#{id}/key_file_ids_set_v1", expires_in: 24.hours) do
+      # Fetch all arrays of key_files paths from concepts
+      all_key_file_paths_arrays = key_concepts.pluck(:key_files)
+      
+      # Flatten and get unique paths
+      # Ensure key_files are present and not empty before flat_map
+      unique_key_file_paths = all_key_file_paths_arrays.compact.flat_map { |paths| paths if paths.present? }.compact.uniq
+      
+      if unique_key_file_paths.empty?
+        Set.new
+      else
+        # Query RepositoryFile IDs for these paths
+        repository_files.where(path: unique_key_file_paths).pluck(:id).to_set
+      end
+    end
+  end
+  
   private
   
   def set_default_values

@@ -1,6 +1,6 @@
 class RepositoriesController < ApplicationController
   before_action :authenticate_user!, except: [:index]
-  before_action :set_repository, only: [:show, :track_time, :sync, :progress, :extract_key_concepts, :analyze_concept]
+  before_action :set_repository, only: [:show, :track_time, :sync, :progress, :extract_key_concepts, :analyze_concept, :key_files]
   before_action :require_admin, only: [:new, :create, :sync, :extract_key_concepts, :analyze_concept]
 
   def index
@@ -9,9 +9,6 @@ class RepositoriesController < ApplicationController
 
   def show
     @key_concepts = @repository.key_concepts.order(:name)
-    
-    # Get all key files from key concepts
-    @key_files_from_concepts = fetch_key_files_from_concepts(@key_concepts)
     
     # Use the ProgressTrackingService for calculating progress
     progress_service = ProgressTrackingService.new(@repository, current_user)
@@ -37,6 +34,22 @@ class RepositoriesController < ApplicationController
     
     # For initial view, get the top-level structure
     @directory_level_structure = build_level_specific_directory_structure(@repository, "")
+  end
+
+  def key_files
+    # @repository is set by before_action :set_repository
+    @key_concepts = @repository.key_concepts.order(:name) # Or just load concepts if needed by fetch_key_files_from_concepts
+    @key_files_from_concepts = fetch_key_files_from_concepts(@key_concepts)
+    @viewed_file_ids = current_user.present? ? current_user.file_views
+                              .joins(:repository_file)
+                              .where(repository_files: { repository_id: @repository.id })
+                              .pluck(:repository_file_id).to_set : Set.new
+    # Ensure the layout is not rendered for this partial action
+    render partial: 'repositories/key_files_list_content', locals: { 
+      repository: @repository, 
+      key_files_from_concepts: @key_files_from_concepts, 
+      viewed_file_ids: @viewed_file_ids 
+    }
   end
 
   def new

@@ -8,6 +8,7 @@ class KeyConcept < ApplicationRecord
   
   # After save, update all key files' is_key_file flag to true
   after_save :update_key_file_flags
+  after_commit :invalidate_repository_key_file_ids_set_cache, on: [:create, :update, :destroy]
   
   def key_files
     value = self[:key_files]
@@ -40,5 +41,9 @@ class KeyConcept < ApplicationRecord
     
     # Set is_key_file = true for all files in key_files
     repository.repository_files.where(path: key_files).update_all(is_key_file: true)
+  end
+
+  def invalidate_repository_key_file_ids_set_cache
+    Rails.cache.delete("repository/#{repository_id}/key_file_ids_set_v1")
   end
 end 

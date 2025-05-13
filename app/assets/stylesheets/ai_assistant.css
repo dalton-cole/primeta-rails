@@ -964,4 +964,33 @@
   margin: 12px 0 12px 16px;
   padding-left: 16px;
   list-style-type: decimal;
+}
+
+/* Custom Scrollbar for AI Assistant Content */
+.ai-assistant-content::-webkit-scrollbar {
+  width: 8px; /* More slender scrollbar */
+}
+
+.ai-assistant-content::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5); /* Slightly transparent track, matching panel bg */
+  border-radius: 10px;
+}
+
+.ai-assistant-content::-webkit-scrollbar-thumb {
+  background-color: rgba(99, 102, 241, 0.5); /* Accent color, semi-transparent */
+  border-radius: 10px;
+  border: 2px solid transparent; /* Creates padding around thumb */
+  background-clip: content-box; /* Ensures border doesn't overlap thumb color */
+}
+
+.ai-assistant-content::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(99, 102, 241, 0.8); /* Darker on hover */
+}
+
+/* For Firefox - more limited styling but better than default */
+.ai-assistant-content {
+  /* This rule might already exist or conflict if .ai-assistant-content is already defined. */
+  /* We're adding scrollbar properties to an existing selector if possible, or ensuring it's applied. */
+  scrollbar-width: thin; /* "auto" or "thin" */
+  scrollbar-color: rgba(99, 102, 241, 0.5) rgba(15, 23, 42, 0.5); /* thumb and track color */
 } 
