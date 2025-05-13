@@ -292,7 +292,7 @@ export default class extends Controller {
       <div id="monaco-container" style="flex: 1 1 auto; min-height: 0; height: auto;"></div>
       <div class="file-footer" style="flex-shrink: 0; margin-top: 10px; width: 100%; display: flex; justify-content: space-between; align-items: center;">
         <div class="file-path" style="display: flex; align-items: center;">
-          <span class="file-icon" style="margin-right: 5px;">📄</span>
+          <span id="file-path-icon" class="file-icon" style="margin-right: 5px;"></span>
           <span data-inline-editor-target="filePath" class="file-path-container" style="word-break: break-all;"></span>
         </div>
         <div data-inline-editor-target="fileStats" class="file-stats" style="display: flex; gap: 15px;"></div>
@@ -432,19 +432,14 @@ export default class extends Controller {
       
       console.log("Monaco editor created successfully");
       
-      // ---- START TEMPORARY LOGS ----
-      console.log("Language received by createEditor:", language);
-      const badgeElement = this.editorContainerTarget.querySelector('#language-badge');
-      if (badgeElement) {
+      // Update file path icon
+      const iconElement = this.editorContainerTarget.querySelector('#file-path-icon');
+      if (iconElement) {
         const iconClasses = this.getLanguageBadgeClass(language || 'plaintext');
-        console.log("Generated icon classes:", iconClasses);
-        badgeElement.textContent = ''; // Clear any text content
-        badgeElement.className = `language-badge ${iconClasses}`; // Set base class + Font Awesome icon classes
-        console.log("Applied badgeElement.className:", badgeElement.className);
+        iconElement.className = `file-icon ${iconClasses}`; // Set base class + Font Awesome icon classes
       } else {
-        console.warn("Could not find #language-badge element to update.");
+        console.warn("Could not find #file-path-icon element to update.");
       }
-      // ---- END TEMPORARY LOGS ----
       
       // Force a layout update immediately
       this.editor.layout();

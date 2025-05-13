@@ -16,6 +16,20 @@
           <% end %>
         </div>
       </div>
+      <div class="hero-visual">
+        <div class="mock-editor-panel">
+          <div class="editor-header">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="code-lines">
+            <div class="line line-1"></div>
+            <div class="line line-2"></div>
+            <div class="line line-3"></div>
+            <div class="line line-4"></div>
+            <div class="line line-5"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -637,6 +651,81 @@
     
     .benefits-grid {
       grid-template-columns: 1fr;
+    }
+  }
+
+  /* Mock Editor Panel */
+  .hero-visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1; /* Ensure it's above the hero background pseudo-element */
+  }
+  
+  .mock-editor-panel {
+    background-color: #1E1E3F; /* Darker shade */
+    border-radius: 8px;
+    padding: 10px;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .editor-header {
+    background-color: #16162E; /* Even darker */
+    padding: 8px 12px;
+    margin: -10px -10px 10px -10px; /* Pull to edges */
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .editor-header .dot {
+    height: 10px;
+    width: 10px;
+    background-color: #444;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+  
+  .editor-header .dot:nth-child(1) { background-color: #fc605c; }
+  .editor-header .dot:nth-child(2) { background-color: #fdbc40; }
+  .editor-header .dot:nth-child(3) { background-color: #34c749; }
+  
+  .code-lines {
+    height: 150px; /* Adjust height as needed */
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .code-lines .line {
+    height: 12px;
+    background-color: rgba(128, 128, 160, 0.4);
+    border-radius: 3px;
+    margin-bottom: 10px;
+    margin-left: 10px; /* Keep left margin */
+    opacity: 0;
+    max-height: 0; /* Start collapsed */
+    overflow: hidden;
+    animation: appearAndStay 5s linear infinite; /* Renamed animation */
+  }
+  
+  .line.line-1 { width: 70%; animation-delay: 0s; }
+  .line.line-2 { width: 85%; animation-delay: 0.5s; } /* Adjusted delays slightly */
+  .line.line-3 { width: 60%; animation-delay: 1s; }
+  .line.line-4 { width: 90%; animation-delay: 1.5s; }
+  .line.line-5 { width: 75%; animation-delay: 2s; }
+  
+  @keyframes appearAndStay { /* Renamed and changed keyframes */
+    0%, 100% { 
+      opacity: 0; 
+      max-height: 0; 
+    }
+    20%, 80% { 
+      opacity: 1; 
+      max-height: 12px; /* Expand to full height */
     }
   }
 </style>
