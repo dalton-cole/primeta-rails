@@ -8,7 +8,7 @@ class RepositoriesController < ApplicationController
   end
 
   def show
-    @key_concepts = @repository.key_concepts.includes(:repository_files).order(:name)
+    @key_concepts = @repository.key_concepts.order(:name)
     
     # Pre-fetch RepositoryFile objects for all key files in the concepts
     all_key_file_paths = @key_concepts.flat_map { |c| c.key_files.presence || [] }.uniq
