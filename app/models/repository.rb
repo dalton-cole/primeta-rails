@@ -53,8 +53,9 @@ class Repository < ApplicationRecord
   
   # Repository statistics
   def language_stats
-    # Prefer the cached attribute
-    if read_attribute(:cached_language_stats).nil?
+    cached_data = read_attribute(:cached_language_stats)
+
+    if cached_data.nil?
       Rails.logger.warn "Falling back to live language_stats calculation for Repository ID: #{id}"
       Rails.cache.fetch("repository/#{id}/language_stats_fallback", expires_in: 1.hour) do
         stats = repository_files
@@ -78,11 +79,14 @@ class Repository < ApplicationRecord
         end
       end
     else
-      # If :jsonb is used, this will be a Hash/Array already.
-      # If :text is used with Rails serialize, it will also be a Hash/Array.
-      # If :text is used without serialize, it might be a JSON string needing parsing.
-      # Assuming it's already in the correct format (Array of Hashes).
-      read_attribute(:cached_language_stats)
+      # Data from cached_language_stats (jsonb/text) - convert string keys to symbols
+      if cached_data.is_a?(Array)
+        cached_data.map { |h| h.is_a?(Hash) ? h.deep_symbolize_keys : h }
+      else
+        Rails.logger.warn "cached_language_stats for Repository ID #{id} is not an Array: #{cached_data.inspect}"
+        # Ensure it returns an empty array if the stored data is not in the expected array format
+        [] 
+      end
     end
   end
   
