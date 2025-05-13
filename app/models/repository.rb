@@ -32,39 +32,57 @@ class Repository < ApplicationRecord
   end
   
   def explorer_count
-    Rails.cache.fetch("repository/#{id}/explorer_count", expires_in: 15.minutes) do
-      # Find all users who have viewed any file in this repository
-      User.joins(file_views: :repository_file)
-          .where(repository_files: { repository_id: id })
-          .distinct
-          .count
+    # Prefer the cached attribute if it's been populated (e.g., by sync job)
+    # The default value for cached_explorer_count is 0, so we check if it's greater than 0
+    # or if it has been explicitly set (even to 0 after a sync).
+    # A more robust check might be to see if last_synced_at is present and the value is not nil.
+    # For simplicity, we check if the attribute is non-nil. If it is nil, it means sync hasn't run or old record.
+    if read_attribute(:cached_explorer_count).nil?
+      # Fallback to old calculation if not synced or for older records
+      Rails.logger.warn "Falling back to live explorer_count calculation for Repository ID: #{id}"
+      Rails.cache.fetch("repository/#{id}/explorer_count_fallback", expires_in: 15.minutes) do
+        User.joins(file_views: :repository_file)
+            .where(repository_files: { repository_id: id })
+            .distinct
+            .count
+      end
+    else
+      read_attribute(:cached_explorer_count)
     end
   end
   
   # Repository statistics
   def language_stats
-    Rails.cache.fetch("repository/#{id}/language_stats", expires_in: 1.hour) do
-      stats = repository_files
-        .where.not(language: [nil, '', 'plaintext'])
-        .group(:language)
-        .count
-        .sort_by { |_, count| -count }
-        .take(3)
+    # Prefer the cached attribute
+    if read_attribute(:cached_language_stats).nil?
+      Rails.logger.warn "Falling back to live language_stats calculation for Repository ID: #{id}"
+      Rails.cache.fetch("repository/#{id}/language_stats_fallback", expires_in: 1.hour) do
+        stats = repository_files
+          .where.not(language: [nil, '', 'plaintext'])
+          .group(:language)
+          .count
+          .sort_by { |_, count| -count }
+          .take(3)
         
-      # Return empty array if no language stats found
-      return [] if stats.empty?
-      
-      # For percentage of total *relevant* files (those with language):
-      total_relevant_files = repository_files.where.not(language: [nil, '', 'plaintext']).count
-      return [] if total_relevant_files == 0 # Avoid division by zero if no files have language
-      
-      stats.map do |language, count|
-        {
-          language: language,
-          count: count,
-          percentage: ((count.to_f / total_relevant_files) * 100).round
-        }
+        return [] if stats.empty?
+        
+        total_relevant_files = repository_files.where.not(language: [nil, '', 'plaintext']).count
+        return [] if total_relevant_files == 0
+        
+        stats.map do |language, count|
+          {
+            language: language,
+            count: count,
+            percentage: ((count.to_f / total_relevant_files) * 100).round
+          }
+        end
       end
+    else
+      # If :jsonb is used, this will be a Hash/Array already.
+      # If :text is used with Rails serialize, it will also be a Hash/Array.
+      # If :text is used without serialize, it might be a JSON string needing parsing.
+      # Assuming it's already in the correct format (Array of Hashes).
+      read_attribute(:cached_language_stats)
     end
   end
   
@@ -79,12 +97,8 @@ class Repository < ApplicationRecord
   end
   
   def total_size_in_bytes
-    count = repository_files.count
-    return 0 if count == 0
-    
-    # Get the sum of all file sizes
-    total_size = repository_files.sum(:size)
-    total_size
+    # Return the pre-calculated attribute
+    super # or read_attribute(:total_size_in_bytes)
   end
   
   def quick_stats

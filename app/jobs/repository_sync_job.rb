@@ -28,11 +28,19 @@ class RepositorySyncJob < ApplicationJob
       # Process and store all files
       process_repository_files(repository, repo_dir)
       
-      # Update repository status and commit hash
+      # Calculate values to be stored
+      total_repository_size = repository.repository_files.sum(:size)
+      current_language_stats = calculate_language_stats_for_sync(repository)
+      current_explorer_count = calculate_explorer_count_for_sync(repository)
+      
+      # Update repository status, commit hash, and cached stats
       repository.update(
         status: 'active', 
         last_synced_at: Time.current,
-        current_commit_hash: current_commit_hash
+        current_commit_hash: current_commit_hash,
+        total_size_in_bytes: total_repository_size,
+        cached_language_stats: current_language_stats,
+        cached_explorer_count: current_explorer_count
       )
       
       # Manually update the repository_files_count
@@ -181,5 +189,36 @@ class RepositorySyncJob < ApplicationJob
       # If there's any error reading the file, consider it binary to be safe
       return true
     end
+  end
+  
+  # Helper method to calculate language stats for storage
+  def calculate_language_stats_for_sync(repository)
+    stats = repository.repository_files
+      .where.not(language: [nil, '', 'plaintext'])
+      .group(:language)
+      .count
+      .sort_by { |_, count| -count }
+      .take(3) # Store top 3 languages
+      
+    return [] if stats.empty?
+    
+    total_relevant_files = repository.repository_files.where.not(language: [nil, '', 'plaintext']).count
+    return [] if total_relevant_files == 0
+    
+    stats.map do |language, count|
+      {
+        language: language,
+        count: count,
+        percentage: ((count.to_f / total_relevant_files) * 100).round
+      }
+    end
+  end
+
+  # Helper method to calculate explorer count for storage
+  def calculate_explorer_count_for_sync(repository)
+    User.joins(file_views: :repository_file)
+        .where(repository_files: { repository_id: repository.id })
+        .distinct
+        .count
   end
 end 

@@ -7,10 +7,15 @@ class ProgressTrackingService
   end
   
   def calculate_progress
+    Rails.logger.info "[ProgressTrackingService] Attempting calculate_progress for Repo ID: #{@repository&.id}, User ID: #{@user&.id}"
     # Handle case when repository or user is nil before hitting cache or calculations
-    return empty_progress_data unless repository.present? && user.present?
+    unless repository.present? && user.present?
+      Rails.logger.warn "[ProgressTrackingService] Aborting calculate_progress: repository or user not present. Repo: #{@repository&.id}, User: #{@user&.id}"
+      return empty_progress_data
+    end
 
-    cache_key = "user/\#{user.id}/repository/\#{repository.id}/progress_data_v2" # Added _v2 for potential structure changes
+    Rails.logger.info "[ProgressTrackingService] Repository and User present, proceeding with calculation."
+    cache_key = "user/#{@user.id}/repository/#{@repository.id}/progress_data_v2" # Added _v2 for potential structure changes
     
     Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
       # Load repository files and viewed files in bulk to avoid N+1 queries

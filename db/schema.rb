@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_05_13_120758) do
+ActiveRecord::Schema[8.0].define(version: 2025_05_13_142027) do
   create_table "achievements", force: :cascade do |t|
     t.string "name", null: false
     t.text "description", null: false
@@ -93,6 +93,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_05_13_120758) do
     t.string "current_commit_hash"
     t.integer "repository_files_count", default: 0
     t.integer "key_concepts_count", default: 0
+    t.integer "total_size_in_bytes", limit: 8, default: 0, null: false
+    t.json "cached_language_stats"
+    t.integer "cached_explorer_count", default: 0, null: false
     t.index ["git_url"], name: "index_repositories_on_git_url", unique: true
     t.index ["key_concepts_count"], name: "index_repositories_on_key_concepts_count"
     t.index ["repository_files_count"], name: "index_repositories_on_repository_files_count"

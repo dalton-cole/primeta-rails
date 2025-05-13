@@ -88,6 +88,6 @@ export default class extends Controller {
   handleFileViewRecorded(event) {
     console.log('File view recorded event detected, requesting progress update');
     // Request progress update via Turbo Streams
-    this.requestProgressUpdate();
+    // this.requestProgressUpdate(); // Commented out to test backend push
   }
 } 

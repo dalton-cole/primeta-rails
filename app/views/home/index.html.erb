@@ -54,8 +54,8 @@
               <% if repo.language_stats.any? %>
                 <div class="language-tags">
                   <% repo.language_stats.each do |stat| %>
-                    <span class="language-tag <%= stat[:language].downcase %>">
-                      <%= stat[:language] %> <small><%= stat[:percentage] %>%</small>
+                    <span class="language-tag <%= stat[:language].try(:downcase) %>">
+                      <%= stat[:language].presence || "N/A" %> <small><%= stat[:percentage] %>%</small>
                     </span>
                   <% end %>
                 </div>

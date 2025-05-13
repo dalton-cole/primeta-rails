@@ -67,7 +67,13 @@ class FileView < ApplicationRecord
   end
   
   def broadcast_progress_update
-    return unless repository_file&.repository.present?
+    Rails.logger.info "[FileView] Attempting broadcast_progress_update for FileView ID: #{id}"
+    unless repository_file&.repository.present?
+      Rails.logger.warn "[FileView] Aborting broadcast: repository_file or repository not present. File: #{repository_file&.id}, Repo: #{repository_file&.repository&.id}"
+      return
+    end
+    
+    Rails.logger.info "[FileView] Repository present (ID: #{repository_file.repository.id}), proceeding to call ProgressTrackingService."
     
     # Get the repository
     repo = repository_file.repository
