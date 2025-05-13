@@ -11,11 +11,16 @@ Rails.application.routes.draw do
   # Admin routes
   namespace :admin do
     resources :feedbacks, only: [:index]
-    # Mount SolidQueue dashboard, protected by Devise and an admin check
-    authenticate :user, ->(user) { user.admin? } do # Ensure user.admin? is your actual admin check
-      mount SolidQueue::Engine => "/solid_queue"
+    
+    authenticate :user, ->(user) { user.admin? } do
+      mount MissionControl::Jobs::Engine, at: "/mission_control_jobs"
+      # We might add rails_performance here later
+      # mount SolidQueue::Engine => "/solid_queue" # We decided this engine might not have a UI for v1.1.5
     end
   end
+
+  # Temporary diagnostic mount for SolidQueue at root level - REMOVE
+  # mount SolidQueue::Engine => "/super_solid_queue"
   
   # Home controller route
   get "home/index"

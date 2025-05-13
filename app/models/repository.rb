@@ -5,6 +5,7 @@ class Repository < ApplicationRecord
   # Associations
   has_many :repository_files, dependent: :destroy, counter_cache: true
   has_many :key_concepts, dependent: :destroy, counter_cache: true
+  has_many :ai_feedbacks, dependent: :destroy
   
   # Constants
   STATUS_OPTIONS = %w[active syncing error].freeze

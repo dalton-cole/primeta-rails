@@ -38,7 +38,7 @@ gem "tzinfo-data", platforms: %i[ windows jruby ]
 # Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
 gem "solid_cache"
 gem "solid_queue"
-gem "solid_cable"
+gem "solid_cable", "~> 3.0.7"
 
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
@@ -55,6 +55,12 @@ gem "thruster", require: false
 # Use Rack middleware
 gem "rack-cors", ">= 2.0.1", require: "rack/cors"
 gem "rack-attack", "~> 6.7"
+
+gem 'mission_control-jobs' # For ActiveJob dashboard
+
+# Hotwire for turbo-native apps
+# gem "turbo-ios", "~> 7.0"
+# gem "turbo-android", "~> 7.0"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem

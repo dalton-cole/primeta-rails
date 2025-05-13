@@ -11,6 +11,9 @@ module Primeta
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.0
 
+    # Disable HTTP Basic Authentication for Mission Control Jobs
+    config.mission_control.jobs.http_basic_auth_enabled = false
+
     # Use Rack Attack for rate limiting
     config.middleware.use Rack::Attack
 
