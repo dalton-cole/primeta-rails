@@ -8,38 +8,38 @@ class ProgressTrackingService
   
   def calculate_progress
     Rails.logger.info "[ProgressTrackingService] Attempting calculate_progress for Repo ID: #{@repository&.id}, User ID: #{@user&.id}"
-    # Handle case when repository or user is nil before hitting cache or calculations
     unless repository.present? && user.present?
       Rails.logger.warn "[ProgressTrackingService] Aborting calculate_progress: repository or user not present. Repo: #{@repository&.id}, User: #{@user&.id}"
       return empty_progress_data
     end
 
     Rails.logger.info "[ProgressTrackingService] Repository and User present, proceeding with calculation."
-    cache_key = "user/#{@user.id}/repository/#{@repository.id}/progress_data_v2" # Added _v2 for potential structure changes
+    cache_key = "user/#{@user.id}/repository/#{@repository.id}/progress_data_v2"
     
-    Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
-      # Load repository files and viewed files in bulk to avoid N+1 queries
+    is_cache_hit = true # Assume hit initially
+    calculated_data = Rails.cache.fetch(cache_key, expires_in: 5.minutes) do
+      is_cache_hit = false # Set to false if block is executed (cache miss)
+      Rails.logger.info "[ProgressTrackingService] Cache MISS for key: #{cache_key}. Recalculating."
+
       viewed_file_ids_for_repo = user.file_views
                             .joins(:repository_file)
                             .where(repository_files: { repository_id: repository.id })
                             .pluck(:repository_file_id).to_set
       
-      # Get the cached set of all key file IDs for the repository
-      all_key_file_ids_for_repo = repository.key_file_ids_set
-      
-      # Calculate progress metrics
       total_files_count = repository.repository_files_count 
-      viewed_files_count = viewed_file_ids_for_repo.count # Total files viewed by user in this repo
+      viewed_files_count = viewed_file_ids_for_repo.count
+      
+      Rails.logger.info "[ProgressTrackingService] Recalculated viewed_files_count: #{viewed_files_count} for user: #{@user.id}, repo: #{@repository.id}"
+      
       files_progress_percentage = total_files_count > 0 ? ((viewed_files_count.to_f / total_files_count) * 100).round(1) : 0
       
+      all_key_file_ids_for_repo = repository.key_file_ids_set
       key_files_count = all_key_file_ids_for_repo.count
-      # Viewed key files are the intersection of all key files in repo and files viewed by user in this repo
       viewed_key_files_count = (all_key_file_ids_for_repo & viewed_file_ids_for_repo).count
       key_files_progress_percentage = key_files_count > 0 ? ((viewed_key_files_count.to_f / key_files_count) * 100).round(1) : 0
       
       {
-        # repository: repository, # Avoid caching full AR objects if not strictly needed for the partial
-        repository_id: repository.id, # Pass ID instead
+        repository_id: repository.id,
         total_files_count: total_files_count,
         viewed_files_count: viewed_files_count,
         files_progress_percentage: files_progress_percentage,
@@ -48,6 +48,12 @@ class ProgressTrackingService
         key_files_progress_percentage: key_files_progress_percentage
       }
     end
+
+    if is_cache_hit
+      Rails.logger.info "[ProgressTrackingService] Cache HIT for key: #{cache_key}. Viewed files from cache: #{calculated_data[:viewed_files_count]}"
+    end
+    
+    calculated_data
   end
   
   def broadcast_progress_update

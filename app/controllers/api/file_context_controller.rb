@@ -101,29 +101,17 @@ module Api
         Thread.new do
           begin
             ActiveRecord::Base.connection_pool.with_connection do
-              # Use find_by + create or update to handle race conditions
-              cache_record = AiResponseCache.find_by(
-                repository_id: repository_id,
-                file_path: file_path,
-                cache_type: 'context'
-              )
-              
-              if cache_record
-                cache_record.update(content: explanation)
-              else
-                AiResponseCache.create(
-                  repository_id: repository_id,
-                  file_path: file_path,
-                  cache_type: 'context',
-                  content: explanation
-                )
-              end
-              Rails.logger.info("Explanation cached successfully in background thread")
+              # Call the method that enqueues the job
+              AiResponseCache.background_cache(repository_id, file_path, 'context', explanation)
+              Rails.logger.info("CacheAiResponseJob enqueued for repo: #{repository_id}, path: #{file_path}, type: 'context'")
             end
           rescue => e
-            Rails.logger.error("Error caching explanation in background: #{e.message}")
+            Rails.logger.error("Error enqueuing CacheAiResponseJob in background: #{e.message}")
+            # Consider how to handle enqueue errors, e.g., report to an error tracker
           ensure
-            ActiveRecord::Base.connection.close
+            # ActiveRecord::Base.connection_pool.with_connection handles returning the connection
+            # So, ActiveRecord::Base.connection.close might be redundant or even problematic here.
+            # It's generally safer to let the with_connection block manage the connection lifecycle.
           end
         end
         
@@ -268,29 +256,14 @@ module Api
         Thread.new do
           begin
             ActiveRecord::Base.connection_pool.with_connection do
-              # Use find_by + create or update to handle race conditions
-              cache_record = AiResponseCache.find_by(
-                repository_id: repository_id,
-                file_path: file_path,
-                cache_type: 'challenges'
-              )
-              
-              if cache_record
-                cache_record.update(content: challenges)
-              else
-                AiResponseCache.create(
-                  repository_id: repository_id,
-                  file_path: file_path,
-                  cache_type: 'challenges',
-                  content: challenges
-                )
-              end
-              Rails.logger.info("Challenges cached successfully in background thread")
+              # Call the method that enqueues the job
+              AiResponseCache.background_cache(repository_id, file_path, 'challenges', challenges)
+              Rails.logger.info("CacheAiResponseJob enqueued for challenges: repo: #{repository_id}, path: #{file_path}")
             end
           rescue => e
-            Rails.logger.error("Error caching challenges in background: #{e.message}")
+            Rails.logger.error("Error enqueuing CacheAiResponseJob for challenges in background: #{e.message}")
           ensure
-            ActiveRecord::Base.connection.close
+            # ActiveRecord::Base.connection_pool.with_connection handles returning the connection
           end
         end
         
